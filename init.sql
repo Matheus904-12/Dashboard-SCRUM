@@ -8,6 +8,9 @@ CREATE TABLE IF NOT EXISTS pedidos (
     prazo DATE NOT NULL,
     status VARCHAR(50) DEFAULT 'No Prazo',
     etapa_atual VARCHAR(100) DEFAULT 'Criado no Comercial',
+    data_entrada_etapa TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    transportadora VARCHAR(100),
+    codigo_rastreio VARCHAR(100),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 

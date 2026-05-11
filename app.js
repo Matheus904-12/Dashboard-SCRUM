@@ -1,84 +1,128 @@
-// Supabase Configuration
-// ATENÇÃO: Substitua pelas suas credenciais do Supabase
+// InovaMold - Polimeros | Core Logic
 const SUPABASE_URL = ''; 
 const SUPABASE_ANON_KEY = '';
 
 let supabase = null;
-if (SUPABASE_URL && SUPABASE_ANON_KEY) {
-    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Initialize Supabase and update status UI
+function initSupabase() {
+    const statusEl = document.getElementById('connection-status');
+    
+    if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+        try {
+            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            statusEl.innerHTML = '<i data-lucide="database"></i> Conectado ao PostgreSQL';
+            statusEl.classList.remove('status-pending');
+            statusEl.classList.add('status-success');
+        } catch (e) {
+            statusEl.innerHTML = '<i data-lucide="database-zap"></i> Erro na Conexão';
+            console.error("Supabase Init Error:", e);
+        }
+    } else {
+        statusEl.innerHTML = '<i data-lucide="database"></i> Modo Demo (Sem Banco)';
+    }
+    lucide.createIcons();
 }
 
-// Mock Data (Based on the images provided)
-const mockData = {
-    pedido: {
-        id: 'PED-2024-001',
-        lote: 'LOTE-A-2024-045',
-        cliente: 'Confecções Silva Ltda',
-        valor: 45800.00,
-        prazo: '2026-05-15',
+// Global State
+let currentOrder = null;
+
+// Mock Data for Demo (InovaMold Specific)
+const mockOrders = [
+    {
+        id: 1,
+        numero_pedido: 'IM-2026-001',
+        lote: 'POL-PVC-442',
+        cliente: 'Indústria Plástica Sul',
+        valor: 125400.00,
+        prazo: '2026-05-20',
         status: 'No Prazo',
-        etapa_atual_index: 6 // Separação Expedição
-    },
-    etapas: [
-        { nome: 'Criado no Comercial', data: '2026-04-10' },
-        { nome: 'OP Gerada no PCP', data: '2026-04-11' },
-        { nome: 'Início Produção', data: '2026-04-15' },
-        { nome: 'Fim Produção', data: '2026-04-28' },
-        { nome: 'Entrada no Estoque', data: '2026-04-29' },
-        { nome: 'Separação Expedição', data: '2026-05-04' },
-        { nome: 'Faturado', data: null },
-        { nome: 'Enviado', data: null }
-    ],
-    insumos: [
-        { nome: 'Tecido 100% Algodão', status: 'green' },
-        { nome: 'Aviamento Botões', status: 'green' },
-        { nome: 'Linha de Costura', status: 'yellow', extra: 'Reposição em 2 dias' },
-        { nome: 'Etiquetas', status: 'green' }
-    ],
-    riscos: [
-        { id: 'PED-2024-004', cliente: 'Fashion Store Rio', etapa: 'Fim Produção', insumos: ['Tecido Poliéster', 'Linha de Costura'], prazo: '2026-05-08' }
-    ]
-};
+        etapa_atual_index: 3, // Início Produção
+        data_entrada_etapa: '2026-05-08',
+        transportadora: null,
+        codigo_rastreio: null,
+        insumos: [
+            { nome: 'Polímero PVC-S', status: 'green' },
+            { nome: 'Aditivo Estabilizante', status: 'yellow', extra: 'Reposição em 1 dia' },
+            { nome: 'Pigmento Preto', status: 'green' }
+        ]
+    }
+];
 
-// State Management
-let currentPedido = mockData.pedido;
-let currentEtapas = mockData.etapas;
-
-// Update UI Functions
-function updateDashboard(data = mockData) {
-    const { pedido, etapas, insumos, riscos } = data;
-
-    // Header & Info Cards
-    document.getElementById('display-pedido-id').innerText = pedido.id;
-    document.getElementById('display-lote-id').innerText = pedido.lote;
-    document.getElementById('card-cliente').innerText = pedido.cliente;
-    document.getElementById('card-valor').innerText = `R$ ${pedido.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
-    document.getElementById('card-prazo').innerText = pedido.prazo;
-    document.getElementById('card-status').innerText = pedido.status;
+// UI Update Logic
+async function loadOrder(orderData) {
+    currentOrder = orderData;
+    
+    // Header
+    document.getElementById('display-pedido-id').innerText = orderData.numero_pedido;
+    document.getElementById('display-lote-id').innerText = orderData.lote;
+    
+    // Cards
+    document.getElementById('card-cliente').innerText = orderData.cliente;
+    document.getElementById('card-valor').innerText = `R$ ${orderData.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+    document.getElementById('card-prazo').innerText = new Date(orderData.prazo).toLocaleDateString('pt-BR');
+    document.getElementById('card-status').innerText = orderData.status;
 
     // Timeline
     const steps = document.querySelectorAll('.step');
     const progressLine = document.getElementById('timeline-progress');
-    let activeIndex = pedido.etapa_atual_index;
-    
+    const activeIdx = orderData.etapa_atual_index;
+
     steps.forEach((step, idx) => {
         const stepIdx = idx + 1;
-        if (stepIdx <= activeIndex) {
+        step.classList.remove('active');
+        step.style.color = 'var(--text-secondary)';
+        
+        if (stepIdx <= activeIdx) {
             step.classList.add('active');
-            step.querySelector('.step-date').innerText = etapas[idx].data || '';
-        } else {
-            step.classList.remove('active');
-            step.querySelector('.step-date').innerText = '-';
+            if (stepIdx === activeIdx && isDelayed(orderData.data_entrada_etapa)) {
+                step.querySelector('.step-circle').style.backgroundColor = '#dc3545';
+                step.querySelector('.step-circle').style.borderColor = '#dc3545';
+            } else {
+                step.querySelector('.step-circle').style.backgroundColor = '';
+                step.querySelector('.step-circle').style.borderColor = '';
+            }
         }
     });
 
-    const progressPercent = ((activeIndex - 1) / (steps.length - 1)) * 100;
+    const progressPercent = ((activeIdx - 1) / (steps.length - 1)) * 100;
     progressLine.style.width = `${progressPercent}%`;
 
+    // Time in stage
+    const daysInStage = calculateDays(orderData.data_entrada_etapa);
+    document.getElementById('etapa-label').innerText = getEtapaName(activeIdx);
+    document.getElementById('etapa-time').innerText = `${daysInStage} dias`;
+    
+    if (daysInStage > 2) {
+        document.getElementById('chart-alert').style.display = 'flex';
+        document.getElementById('delay-days').innerText = (daysInStage - 1).toFixed(1);
+    } else {
+        document.getElementById('chart-alert').style.display = 'none';
+    }
+
     // Insumos
-    const insumosList = document.getElementById('insumos-list');
-    insumosList.innerHTML = '';
+    renderInsumos(orderData.insumos || []);
+
+    // Logistics
+    if (activeIdx >= 7 && orderData.transportadora) {
+        document.getElementById('tracking-info').style.display = 'block';
+        document.getElementById('tracking-company').innerText = orderData.transportadora;
+        document.getElementById('tracking-code').innerText = orderData.codigo_rastreio || 'Pendente';
+    } else {
+        document.getElementById('tracking-info').style.display = 'none';
+    }
+
+    updateChart(daysInStage);
+    lucide.createIcons(); // Refresh icons for dynamic content
+}
+
+function renderInsumos(insumos) {
+    const list = document.getElementById('insumos-list');
+    list.innerHTML = '';
+    let hasCritical = false;
+    
     insumos.forEach(item => {
+        if (item.status === 'red') hasCritical = true;
         const li = document.createElement('li');
         li.className = 'semaforo-item';
         li.innerHTML = `
@@ -88,92 +132,101 @@ function updateDashboard(data = mockData) {
             </div>
             ${item.extra ? `<span class="item-details">${item.extra}</span>` : ''}
         `;
-        insumosList.appendChild(li);
+        list.appendChild(li);
     });
-
-    // Chart & Etapa Info
-    const currentEtapa = etapas[activeIndex - 1];
-    document.getElementById('etapa-label').innerText = currentEtapa.nome;
-    document.getElementById('etapa-data').innerText = currentEtapa.data || '-';
-    updateChart();
-
-    // Risks Table
-    const riskTable = document.getElementById('risk-table-body');
-    riskTable.innerHTML = '';
-    riscos.forEach(risk => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td><span style="color: var(--accent-danger)">●</span> ${risk.id}</td>
-            <td>${risk.cliente}</td>
-            <td>${risk.etapa}</td>
-            <td>
-                ${risk.insumos.map(i => `<div style="font-size: 0.7rem;"><span style="color: var(--accent-warning)">●</span> ${i}</div>`).join('')}
-            </td>
-            <td style="color: var(--accent-danger)">${risk.prazo}</td>
-        `;
-        riskTable.appendChild(tr);
-    });
+    
+    document.getElementById('insumo-alert').style.display = hasCritical ? 'flex' : 'none';
 }
 
-function updateChart() {
+function updateChart(currentDays) {
     const ctx = document.getElementById('stageChart').getContext('2d');
-    
-    // Clear previous chart if exists
     if (window.myChart) window.myChart.destroy();
-
     window.myChart = new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: ['Média da Fábrica', 'Este Pedido'],
+            labels: ['Média InovaMold', 'Este Pedido'],
             datasets: [{
-                data: [1.2, 3], // Mocked days
-                backgroundColor: ['#1a1a1a', '#dc3545'],
-                borderRadius: 5,
-                barThickness: 30
+                data: [1.5, currentDays],
+                backgroundColor: ['#1a1a1a', currentDays > 2 ? '#dc3545' : '#000'],
+                borderRadius: 4
             }]
         },
         options: {
             indexAxis: 'y',
             responsive: true,
             plugins: { legend: { display: false } },
-            scales: {
-                x: { grid: { display: false }, ticks: { color: '#6c757d' } },
-                y: { grid: { display: false }, ticks: { color: '#1a1a1a', font: { weight: 'bold' } } }
-            }
+            scales: { x: { display: false }, y: { grid: { display: false } } }
         }
     });
-
-    document.getElementById('chart-alert').style.display = 'flex';
-    document.getElementById('delay-days').innerText = '1.8';
 }
 
-// Supabase Logic (To be implemented when keys are provided)
-async function fetchFromSupabase() {
-    if (!supabase) return;
+// Helpers
+function calculateDays(dateStr) {
+    const start = new Date(dateStr);
+    const now = new Date();
+    const diff = now - start;
+    return Math.floor(diff / (1000 * 60 * 60 * 24));
+}
 
-    try {
-        const { data: orders, error } = await supabase
+function isDelayed(dateStr) {
+    return calculateDays(dateStr) > 2;
+}
+
+function getEtapaName(idx) {
+    const names = ['', 'Comercial', 'PCP', 'Produção', 'Fim Produção', 'Estoque', 'Separação', 'Faturado', 'Enviado'];
+    return names[idx] || 'Desconhecida';
+}
+
+// CRUD & Search
+document.getElementById('search-order').addEventListener('input', async (e) => {
+    const term = e.target.value.toLowerCase();
+    if (term.length < 3) return;
+
+    if (supabase) {
+        const { data, error } = await supabase
             .from('pedidos')
             .select('*')
-            .limit(1)
+            .or(`numero_pedido.ilike.%${term}%,cliente.ilike.%${term}%,lote.ilike.%${term}%`)
             .single();
-
-        if (error) throw error;
-        
-        // This is where real data mapping would happen
-        console.log("Data from Supabase:", orders);
-    } catch (err) {
-        console.error("Supabase Error:", err.message);
+        if (data) loadOrder(data);
+    } else {
+        const found = mockOrders.find(o => o.numero_pedido.toLowerCase().includes(term) || o.cliente.toLowerCase().includes(term));
+        if (found) loadOrder(found);
     }
-}
+});
 
-// Event Listeners
-document.getElementById('btn-admin').onclick = () => {
-    alert("Para vincular o Supabase:\n1. Adicione as chaves no topo do app.js\n2. Execute o init.sql no seu painel do Supabase.");
+// Modal Logic
+const adminModal = document.getElementById('admin-modal');
+document.getElementById('btn-open-admin').onclick = () => adminModal.style.display = 'flex';
+document.getElementById('close-admin').onclick = () => adminModal.style.display = 'none';
+
+document.getElementById('order-form').onsubmit = async (e) => {
+    e.preventDefault();
+    const orderObj = {
+        numero_pedido: document.getElementById('in-numero').value,
+        lote: document.getElementById('in-lote').value,
+        cliente: document.getElementById('in-cliente').value,
+        valor: parseFloat(document.getElementById('in-valor').value),
+        prazo: document.getElementById('in-prazo').value,
+        etapa_atual_index: parseInt(document.getElementById('in-etapa').value),
+        transportadora: document.getElementById('in-transp').value,
+        codigo_rastreio: document.getElementById('in-rastreio').value,
+        data_entrada_etapa: new Date().toISOString()
+    };
+
+    if (supabase) {
+        const { error } = await supabase.from('pedidos').upsert(orderObj);
+        if (!error) alert('Pedido salvo na InovaMold!');
+    } else {
+        mockOrders.push(orderObj);
+        alert('Modo Demo: Pedido salvo temporariamente.');
+    }
+    adminModal.style.display = 'none';
+    loadOrder(orderObj);
 };
 
 // Init
 window.onload = () => {
-    updateDashboard();
-    fetchFromSupabase();
+    initSupabase();
+    loadOrder(mockOrders[0]);
 };

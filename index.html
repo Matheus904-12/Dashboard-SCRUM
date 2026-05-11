@@ -3,17 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Logistics Monitor | Enterprise Dashboard</title>
+    <title>InovaMold - Polimeros | Dashboard Logística</title>
     <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <div class="container">
+        <!-- Brand Header -->
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem;">
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <div style="width: 40px; height: 40px; background: #000; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #fff;">
+                    <i data-lucide="factory" style="width: 24px; height: 24px;"></i>
+                </div>
+                <h2 style="letter-spacing: -1px; font-weight: 800;">InovaMold <span style="font-weight: 300; color: var(--text-secondary);">Polimeros</span></h2>
+            </div>
+            <div id="connection-status" class="status-badge status-pending">
+                <i data-lucide="database" style="width: 14px; height: 14px;"></i>
+                Aguardando Configuração
+            </div>
+        </div>
+
         <!-- Search Header -->
         <header class="header-search">
             <div class="search-container">
-                <span class="search-icon">🔍</span>
+                <i data-lucide="search" class="search-icon" style="width: 18px; height: 18px;"></i>
                 <input type="text" id="search-order" placeholder="Buscar por nº do pedido, cliente ou lote...">
             </div>
             <div class="pedido-info-top">
@@ -29,42 +44,42 @@
                 <div id="timeline-progress" class="timeline-progress" style="width: 0%;"></div>
                 
                 <div class="step" data-step="1">
-                    <div class="step-circle">🛒</div>
-                    <span class="step-label">Criado no Comercial</span>
+                    <div class="step-circle"><i data-lucide="shopping-cart"></i></div>
+                    <span class="step-label">Comercial</span>
                     <span class="step-date">-</span>
                 </div>
                 <div class="step" data-step="2">
-                    <div class="step-circle">📄</div>
-                    <span class="step-label">OP Gerada no PCP</span>
+                    <div class="step-circle"><i data-lucide="file-text"></i></div>
+                    <span class="step-label">PCP</span>
                     <span class="step-date">-</span>
                 </div>
                 <div class="step" data-step="3">
-                    <div class="step-circle">▶️</div>
+                    <div class="step-circle"><i data-lucide="play"></i></div>
                     <span class="step-label">Início Produção</span>
                     <span class="step-date">-</span>
                 </div>
                 <div class="step" data-step="4">
-                    <div class="step-circle">✔️</div>
+                    <div class="step-circle"><i data-lucide="check-circle"></i></div>
                     <span class="step-label">Fim Produção</span>
                     <span class="step-date">-</span>
                 </div>
                 <div class="step" data-step="5">
-                    <div class="step-circle">📦</div>
-                    <span class="step-label">Entrada no Estoque</span>
+                    <div class="step-circle"><i data-lucide="package"></i></div>
+                    <span class="step-label">Estoque</span>
                     <span class="step-date">-</span>
                 </div>
                 <div class="step" data-step="6">
-                    <div class="step-circle">📋</div>
-                    <span class="step-label">Separação Expedição</span>
+                    <div class="step-circle"><i data-lucide="clipboard-list"></i></div>
+                    <span class="step-label">Separação</span>
                     <span class="step-date">-</span>
                 </div>
                 <div class="step" data-step="7">
-                    <div class="step-circle">💰</div>
+                    <div class="step-circle"><i data-lucide="banknote"></i></div>
                     <span class="step-label">Faturado</span>
                     <span class="step-date">-</span>
                 </div>
                 <div class="step" data-step="8">
-                    <div class="step-circle">🚚</div>
+                    <div class="step-circle"><i data-lucide="truck"></i></div>
                     <span class="step-label">Enviado</span>
                     <span class="step-date">-</span>
                 </div>
@@ -73,31 +88,31 @@
             <!-- Info Box Row -->
             <div class="info-row">
                 <div class="info-box">
-                    <div class="info-icon-box">👤</div>
+                    <div class="info-icon-box"><i data-lucide="user"></i></div>
                     <div class="info-content">
                         <span class="label">Cliente</span>
                         <span class="value" id="card-cliente">-</span>
                     </div>
                 </div>
                 <div class="info-box">
-                    <div class="info-icon-box">💰</div>
+                    <div class="info-icon-box"><i data-lucide="dollar-sign"></i></div>
                     <div class="info-content">
                         <span class="label">Valor</span>
                         <span class="value" id="card-valor">R$ 0,00</span>
                     </div>
                 </div>
                 <div class="info-box">
-                    <div class="info-icon-box">📅</div>
+                    <div class="info-icon-box"><i data-lucide="calendar"></i></div>
                     <div class="info-content">
                         <span class="label">Prazo</span>
                         <span class="value" id="card-prazo">-</span>
                     </div>
                 </div>
                 <div class="info-box">
-                    <div class="info-icon-box" style="color: var(--accent-success);">🕒</div>
+                    <div class="info-icon-box" id="status-icon"><i data-lucide="clock"></i></div>
                     <div class="info-content">
-                        <span class="label">Status</span>
-                        <span class="value" id="card-status" style="color: var(--accent-success);">Carregando...</span>
+                        <span class="label">Status do Pedido</span>
+                        <span class="value" id="card-status">No Prazo</span>
                     </div>
                 </div>
             </div>
@@ -107,67 +122,140 @@
         <div class="details-grid">
             <!-- Semáforo -->
             <section class="sub-card">
-                <h3 class="card-title">Semáforo de Insumos</h3>
+                <h3 class="card-title">Semáforo de Polímeros & Insumos</h3>
                 <ul class="semaforo-list" id="insumos-list">
                     <!-- Items injected via JS -->
                 </ul>
+                <div id="insumo-alert" class="alert-box" style="display: none; background: #fff1f1; border-color: #ffcccc; color: #cc0000;">
+                    <i data-lucide="alert-triangle" style="width: 16px; height: 16px;"></i>
+                    Insumos críticos em falta. Produção em risco.
+                </div>
             </section>
 
             <!-- Chart -->
             <section class="sub-card">
-                <h3 class="card-title">Permanência na Etapa Atual</h3>
+                <h3 class="card-title">Eficiência por Etapa</h3>
                 <div style="background: #f8f9fa; padding: 1rem; border-radius: 12px; margin-bottom: 1rem;">
                     <span style="font-size: 0.8rem; color: var(--text-secondary);">Etapa atual: <b id="etapa-label">-</b></span><br>
-                    <span style="font-size: 0.8rem; color: var(--text-secondary);">Desde <span id="etapa-data">-</span></span>
+                    <span style="font-size: 0.8rem; color: var(--text-secondary);">Permanência: <span id="etapa-time">0 dias</span></span>
                 </div>
                 <canvas id="stageChart" height="150"></canvas>
                 <div class="alert-box" id="chart-alert" style="display: none;">
-                    ⚠️ Este pedido está <span id="delay-days">0</span> dia(s) acima da média
+                    <i data-lucide="trending-up" style="width: 16px; height: 16px;"></i>
+                    Gargalo detectado: <span id="delay-days">0</span> dia(s) acima da média da InovaMold.
                 </div>
             </section>
 
-            <!-- Shipping Status -->
+            <!-- Logistics Tracking -->
             <section class="sub-card">
-                <h3 class="card-title">Status de Expedição e Entrega</h3>
-                <div class="status-bottom-card">
-                    <span style="font-size: 1.5rem;">🕒</span>
-                    <div>
-                        <div style="font-weight: 600; font-size: 0.9rem;">Pedido em Processamento</div>
-                        <div style="font-size: 0.75rem; color: var(--text-secondary);">Ainda não faturado</div>
+                <h3 class="card-title">Logística e Expedição</h3>
+                <div id="tracking-info" style="display: none;">
+                    <div class="status-bottom-card" style="background: #e8f5e9; border-color: #c8e6c9;">
+                        <i data-lucide="truck" style="width: 24px; height: 24px; color: #2e7d32;"></i>
+                        <div>
+                            <div style="font-weight: 700; font-size: 0.9rem;" id="tracking-company">-</div>
+                            <div style="font-size: 0.75rem; color: #2e7d32;">Código: <b id="tracking-code">-</b></div>
+                        </div>
                     </div>
                 </div>
-                <p style="font-size: 0.8rem; font-weight: 600; margin-bottom: 1rem;">Pedidos Prontos Aguardando Expedição (2)</p>
-                <div id="ready-orders-list">
-                    <!-- Mini cards -->
+                <div id="pending-shipping">
+                    <p style="font-size: 0.8rem; font-weight: 600; margin-bottom: 1rem; display: flex; justify-content: space-between;">
+                        Aguardando Expedição <span id="ready-count" class="badge" style="background: #000; color: #fff; padding: 2px 8px; border-radius: 10px;">0</span>
+                    </p>
+                    <div id="ready-orders-list">
+                        <!-- Mini cards sorted by date -->
+                    </div>
                 </div>
             </section>
 
             <!-- Risk Table -->
-            <section class="sub-card" style="grid-column: span 1;">
-                 <h3 class="card-title">Pedidos Similares em Risco</h3>
-                 <div class="risk-alert">
-                    ⚠️ 1 pedido(s) com insumos críticos compartilhados ou na mesma etapa
+            <section class="sub-card">
+                 <h3 class="card-title">Pedidos em Risco (Insumos Compartilhados)</h3>
+                 <div class="risk-alert" id="risk-summary">
+                    Analisando cadeia de suprimentos...
                  </div>
                  <table>
                      <thead>
                          <tr>
                              <th>Pedido</th>
-                             <th>Cliente</th>
-                             <th>Etapa Atual</th>
-                             <th>Insumos Críticos</th>
-                             <th>Prazo</th>
+                             <th>Etapa</th>
+                             <th>Insumo Crítico</th>
+                             <th>Impacto</th>
                          </tr>
                      </thead>
                      <tbody id="risk-table-body">
-                         <!-- Table rows injected via JS -->
+                         <!-- Table rows -->
                      </tbody>
                  </table>
             </section>
         </div>
     </div>
 
-    <!-- Admin Float Button (To add/edit data) -->
-    <button id="btn-admin" style="position: fixed; bottom: 20px; right: 20px; background: #000; color: #fff; border: none; border-radius: 50%; width: 50px; height: 50px; cursor: pointer; font-size: 1.2rem; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">➕</button>
+    <!-- CRUD / Admin Modal -->
+    <div id="admin-modal" class="modal-overlay" style="display: none;">
+        <div class="glass-card modal-content" style="max-width: 600px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h3 class="section-title" style="margin-bottom: 0;">Gestão de Pedidos (CRUD)</h3>
+                <button id="close-admin" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
+            </div>
+            <form id="order-form">
+                <input type="hidden" id="order-id">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="input-group">
+                        <label>Nº Pedido</label>
+                        <input type="text" id="in-numero" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Lote</label>
+                        <input type="text" id="in-lote" required>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label>Cliente</label>
+                    <input type="text" id="in-cliente" required>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="input-group">
+                        <label>Valor (R$)</label>
+                        <input type="number" id="in-valor" step="0.01" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Prazo</label>
+                        <input type="date" id="in-prazo" required>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label>Etapa Atual</label>
+                    <select id="in-etapa">
+                        <option value="1">Comercial</option>
+                        <option value="2">PCP</option>
+                        <option value="3">Início Produção</option>
+                        <option value="4">Fim Produção</option>
+                        <option value="5">Estoque</option>
+                        <option value="6">Separação</option>
+                        <option value="7">Faturado</option>
+                        <option value="8">Enviado</option>
+                    </select>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="input-group">
+                        <label>Transportadora</label>
+                        <input type="text" id="in-transp">
+                    </div>
+                    <div class="input-group">
+                        <label>Rastreio</label>
+                        <input type="text" id="in-rastreio">
+                    </div>
+                </div>
+                <button type="submit" style="margin-top: 1rem; width: 100%; background: #000;">Salvar Pedido na InovaMold</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Admin Float Button -->
+    <button id="btn-open-admin" style="position: fixed; bottom: 20px; right: 20px; background: #000; color: #fff; border: none; border-radius: 50%; width: 50px; height: 50px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.3); z-index: 100;">
+        <i data-lucide="plus"></i>
+    </button>
 
     <script src="app.js"></script>
 </body>
