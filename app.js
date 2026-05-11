@@ -2,7 +2,7 @@
 const SUPABASE_URL = 'https://aueswagvyexetfxduuxh.supabase.co'; 
 const SUPABASE_ANON_KEY = 'sb_publishable_83pMDh35idUGKvI289pyhg_M7V-JPpm';
 
-let supabase = null;
+let supabaseClient = null;
 
 // Initialize Supabase and update status UI
 function initSupabase() {
@@ -17,7 +17,7 @@ function initSupabase() {
         }
 
         try {
-            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
             console.log("Supabase Client Created Successfully");
             statusEl.innerHTML = '<i data-lucide="database"></i> Conectado ao PostgreSQL';
             statusEl.classList.remove('status-pending');
@@ -200,8 +200,8 @@ document.getElementById('search-order').addEventListener('input', async (e) => {
     const term = e.target.value.toLowerCase();
     if (term.length < 3) return;
 
-    if (supabase) {
-        const { data, error } = await supabase
+    if (supabaseClient) {
+        const { data, error } = await supabaseClient
             .from('pedidos')
             .select('*')
             .or(`numero_pedido.ilike.%${term}%,cliente.ilike.%${term}%,lote.ilike.%${term}%`)
@@ -232,8 +232,8 @@ document.getElementById('order-form').onsubmit = async (e) => {
         data_entrada_etapa: new Date().toISOString()
     };
 
-    if (supabase) {
-        const { error } = await supabase.from('pedidos').upsert(orderObj);
+    if (supabaseClient) {
+        const { error } = await supabaseClient.from('pedidos').upsert(orderObj);
         if (!error) alert('Pedido salvo na InovaMold!');
     } else {
         mockOrders.push(orderObj);
