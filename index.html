@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SCRUM Nexus | Dashboard em Tempo Real</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <meta name="description" content="Dashboard SCRUM em tempo real para vendas, estoque e logística. Gestão de demandas e equipe.">
+</head>
+<body>
+    <div class="dashboard-container">
+        <header>
+            <div class="header-left">
+                <h1>SCRUM Nexus</h1>
+                <p style="color: var(--text-secondary); font-size: 0.9rem;">Visão Unificada: Vendas • Estoque • Logística</p>
+            </div>
+            <div class="header-right">
+                <div id="current-time" style="font-weight: 600; font-size: 1.1rem;">00:00:00</div>
+                <div style="font-size: 0.8rem; color: var(--accent-success);">● SISTEMA ONLINE</div>
+            </div>
+        </header>
+
+        <!-- KPI Summary -->
+        <div class="kpi-grid">
+            <div class="glass-card">
+                <div class="kpi-title">Vendas Totais (24h)</div>
+                <div class="kpi-value" id="kpi-sales">R$ 0,00</div>
+                <div style="color: var(--accent-success); font-size: 0.8rem; margin-top: 5px;">↑ 12.5% vs ontem</div>
+            </div>
+            <div class="glass-card">
+                <div class="kpi-title">Saúde do Estoque</div>
+                <div class="kpi-value" id="kpi-inventory">0%</div>
+                <div style="color: var(--accent-warning); font-size: 0.8rem; margin-top: 5px;">3 itens em nível crítico</div>
+            </div>
+            <div class="glass-card">
+                <div class="kpi-title">Logística (Entregas)</div>
+                <div class="kpi-value" id="kpi-logistics">0</div>
+                <div style="color: var(--accent-primary); font-size: 0.8rem; margin-top: 5px;">98% dentro do prazo</div>
+            </div>
+        </div>
+
+        <!-- Real-time Charts -->
+        <div class="chart-grid">
+            <div class="glass-card">
+                <h3 class="section-title">Fluxo de Vendas e Logística</h3>
+                <canvas id="salesChart" height="200"></canvas>
+            </div>
+            <div class="glass-card">
+                <h3 class="section-title">Distribuição de Carga</h3>
+                <canvas id="inventoryChart" height="200"></canvas>
+            </div>
+        </div>
+
+        <!-- Management Sections -->
+        <div class="main-content">
+            <!-- Team Management -->
+            <div class="glass-card">
+                <h3 class="section-title">Equipe Scrum</h3>
+                <form id="team-form">
+                    <div class="input-group">
+                        <label>Nome do Companheiro</label>
+                        <input type="text" id="member-name" placeholder="Ex: João Silva" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Papel</label>
+                        <select id="member-role" required>
+                            <option value="PO">Product Owner</option>
+                            <option value="Manager">Gerente</option>
+                            <option value="Dev">Desenvolvedor</option>
+                        </select>
+                    </div>
+                    <button type="submit">Registrar Membro</button>
+                </form>
+                <hr style="margin: 1.5rem 0; border: none; border-top: 1px solid var(--glass-border);">
+                <div class="list-container" id="team-list">
+                    <!-- Members will be injected here -->
+                </div>
+            </div>
+
+            <!-- Demand Management -->
+            <div class="glass-card">
+                <h3 class="section-title">Demandas dos Clientes</h3>
+                <form id="demand-form">
+                    <div class="input-group">
+                        <label>Título da Demanda</label>
+                        <input type="text" id="demand-title" placeholder="Ex: Novo módulo de relatórios" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Prioridade</label>
+                        <select id="demand-priority" required>
+                            <option value="High">Alta</option>
+                            <option value="Medium">Média</option>
+                            <option value="Low">Baixa</option>
+                        </select>
+                    </div>
+                    <button type="submit">Lançar Demanda</button>
+                </form>
+                <hr style="margin: 1.5rem 0; border: none; border-top: 1px solid var(--glass-border);">
+                <div class="list-container" id="demand-list">
+                    <!-- Demands will be injected here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
