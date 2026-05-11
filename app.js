@@ -175,9 +175,9 @@ function selectOrder(order) {
     const cls = isDone ? 'done' : (isActive ? 'active' : '');
     const doneCheckSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
     return `
-      <div style="display:flex; flex-direction:column; align-items:center; gap:6px; min-width:64px;">
+      <div style="display:flex; flex-direction:column; align-items:center; gap:8px; flex:1; position:relative;">
         <div class="step-dot ${cls}">${isDone ? doneCheckSvg : et.icon}</div>
-        <div style="font-size:9px; color:${isActive ? '#d4af37' : isDone ? '#555' : '#333'}; text-align:center; letter-spacing:0.3px; line-height:1.3;">
+        <div style="font-size:9px; color:${isActive ? 'var(--accent)' : isDone ? 'var(--text-muted)' : 'var(--step-inactive)'}; text-align:center; letter-spacing:0.5px; line-height:1.4; font-weight:${isActive ? '600' : '400'};">
           ${et.label.toUpperCase()}
         </div>
       </div>`;
