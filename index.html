@@ -51,71 +51,71 @@
                 <div class="step" data-step="1">
                     <div class="step-circle"><i data-lucide="shopping-cart"></i></div>
                     <span class="step-label">Comercial</span>
-                    <span class="step-date">-</span>
+                    <span class="step-date" id="date-step-1">-</span>
                 </div>
                 <div class="step" data-step="2">
                     <div class="step-circle"><i data-lucide="file-text"></i></div>
                     <span class="step-label">PCP</span>
-                    <span class="step-date">-</span>
+                    <span class="step-date" id="date-step-2">-</span>
                 </div>
                 <div class="step" data-step="3">
-                    <div class="step-circle"><i data-lucide="play"></i></div>
+                    <div class="step-circle"><i data-lucide="play-circle"></i></div>
                     <span class="step-label">Início Produção</span>
-                    <span class="step-date">-</span>
+                    <span class="step-date" id="date-step-3">-</span>
                 </div>
                 <div class="step" data-step="4">
                     <div class="step-circle"><i data-lucide="check-circle"></i></div>
                     <span class="step-label">Fim Produção</span>
-                    <span class="step-date">-</span>
+                    <span class="step-date" id="date-step-4">-</span>
                 </div>
                 <div class="step" data-step="5">
                     <div class="step-circle"><i data-lucide="package"></i></div>
                     <span class="step-label">Estoque</span>
-                    <span class="step-date">-</span>
+                    <span class="step-date" id="date-step-5">-</span>
                 </div>
                 <div class="step" data-step="6">
-                    <div class="step-circle"><i data-lucide="clipboard-list"></i></div>
+                    <div class="step-circle"><i data-lucide="truck"></i></div>
                     <span class="step-label">Separação</span>
-                    <span class="step-date">-</span>
+                    <span class="step-date" id="date-step-6">-</span>
                 </div>
                 <div class="step" data-step="7">
-                    <div class="step-circle"><i data-lucide="banknote"></i></div>
+                    <div class="step-circle"><i data-lucide="receipt"></i></div>
                     <span class="step-label">Faturado</span>
-                    <span class="step-date">-</span>
+                    <span class="step-date" id="date-step-7">-</span>
                 </div>
                 <div class="step" data-step="8">
-                    <div class="step-circle"><i data-lucide="truck"></i></div>
+                    <div class="step-circle"><i data-lucide="ship"></i></div>
                     <span class="step-label">Enviado</span>
-                    <span class="step-date">-</span>
+                    <span class="step-date" id="date-step-8">-</span>
                 </div>
             </div>
 
-            <!-- Info Box Row -->
-            <div class="info-row">
-                <div class="info-box">
-                    <div class="info-icon-box"><i data-lucide="user"></i></div>
-                    <div class="info-content">
+            <!-- Summary Cards -->
+            <div class="summary-grid">
+                <div class="sub-card card-light">
+                    <div class="card-icon"><i data-lucide="user"></i></div>
+                    <div>
                         <span class="label">Cliente</span>
                         <span class="value" id="card-cliente">-</span>
                     </div>
                 </div>
-                <div class="info-box">
-                    <div class="info-icon-box"><i data-lucide="dollar-sign"></i></div>
-                    <div class="info-content">
+                <div class="sub-card card-light">
+                    <div class="card-icon"><i data-lucide="dollar-sign"></i></div>
+                    <div>
                         <span class="label">Valor</span>
                         <span class="value" id="card-valor">R$ 0,00</span>
                     </div>
                 </div>
-                <div class="info-box">
-                    <div class="info-icon-box"><i data-lucide="calendar"></i></div>
-                    <div class="info-content">
+                <div class="sub-card card-light">
+                    <div class="card-icon"><i data-lucide="calendar"></i></div>
+                    <div>
                         <span class="label">Prazo</span>
                         <span class="value" id="card-prazo">-</span>
                     </div>
                 </div>
-                <div class="info-box">
-                    <div class="info-icon-box" id="status-icon"><i data-lucide="clock"></i></div>
-                    <div class="info-content">
+                <div class="sub-card card-light">
+                    <div class="card-icon"><i data-lucide="clock"></i></div>
+                    <div>
                         <span class="label">Status do Pedido</span>
                         <span class="value" id="card-status">No Prazo</span>
                     </div>
@@ -198,19 +198,10 @@
     <div id="admin-modal" class="modal-overlay" style="display: none;">
         <div class="glass-card modal-content" style="max-width: 600px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                <h3 class="section-title" style="margin-bottom: 0;">Gestão de Pedidos (InovaMold ERP)</h3>
+                <h3 class="section-title" style="margin-bottom: 0;">Novo / Editar Pedido</h3>
                 <button id="close-admin" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #000;">&times;</button>
             </div>
 
-            <!-- Tab Navigation -->
-            <div class="tab-nav">
-                <button class="tab-btn active" id="tab-list">Lista de Pedidos</button>
-                <button class="tab-btn" id="tab-form">Novo / Editar</button>
-            </div>
-
-            <!-- List View REMOVED - Table is now on main dashboard -->
-
-            <!-- Form View -->
             <div id="view-form">
                 <form id="order-form">
                     <input type="hidden" id="order-id">
@@ -270,9 +261,10 @@
         </div>
     </div>
 
-    <!-- Admin Float Button -->
-    <button id="btn-open-admin" style="position: fixed; bottom: 20px; right: 20px; background: #000; color: #fff; border: none; border-radius: 50%; width: 50px; height: 50px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.3); z-index: 100;">
-        <i data-lucide="plus"></i>
+    <!-- Novo Botão de Adicionar (Premium) -->
+    <button id="btn-open-admin" class="fab-button">
+        <i data-lucide="plus" class="fab-icon"></i>
+        <span>Novo Pedido</span>
     </button>
 
     <script src="app.js"></script>

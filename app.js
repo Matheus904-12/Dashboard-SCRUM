@@ -288,25 +288,18 @@ const viewList = document.getElementById('view-list');
 const viewForm = document.getElementById('view-form');
 
 function switchTab(tab) {
-    if (tab === 'list') {
-        tabList.classList.add('active');
-        tabForm.classList.remove('active');
-        viewList.style.display = 'block';
-        viewForm.style.display = 'none';
-        document.getElementById('btn-delete').style.display = 'none';
-    } else {
-        tabList.classList.remove('active');
-        tabForm.classList.add('active');
-        viewList.style.display = 'none';
-        viewForm.style.display = 'block';
-    }
+    // Tabbed view was removed, modal now only shows the form
+    const viewForm = document.getElementById('view-form');
+    if (viewForm) viewForm.style.display = 'block';
 }
 
-tabList.onclick = () => switchTab('list');
-tabForm.onclick = () => {
+// Fixed listeners for the simplified modal
+document.getElementById('close-admin').onclick = closeModal;
+document.getElementById('btn-open-admin').onclick = () => {
     document.getElementById('order-form').reset();
     document.getElementById('order-id').value = '';
-    switchTab('form');
+    document.getElementById('btn-delete').style.display = 'none';
+    openModal();
 };
 
 // Search
@@ -347,17 +340,11 @@ function updateChart(currentDays) {
 function updateRiskTable() {
     const tbody = document.getElementById('risk-table-body');
     const summary = document.getElementById('risk-summary');
+    if (!tbody || !summary) return; // Element removed from main dashboard
+    
     tbody.innerHTML = '';
-    
     const delayed = allOrders.filter(o => isDelayed(o.data_entrada_etapa) && o.etapa_atual_index < 8);
-    
-    if (delayed.length === 0) {
-        summary.innerText = "Cadeia de suprimentos estável. Nenhum gargalo crítico detectado.";
-        summary.style.background = "#e8f5e9";
-        summary.style.color = "#2e7d32";
-    } else {
-        summary.innerText = `${delayed.length} pedido(s) retido(s) por mais de 2 dias na mesma etapa.`;
-        summary.style.background = "#fff9f0";
+    ...
         summary.style.color = "#856404";
         
         delayed.slice(0, 5).forEach(o => {
