@@ -110,6 +110,45 @@ async function loadOrder(orderData) {
     }
 
     updateChart(daysInStage);
+    loadInsumos(orderData.id);
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+// Semáforo de Polímeros & Insumos
+async function loadInsumos(pedidoId) {
+    const list = document.getElementById('insumos-list');
+    const alertEl = document.getElementById('insumo-alert');
+    if (!list) return;
+    list.innerHTML = '<li style="color:#aaa; font-size:0.85rem; padding:1rem 0;">Carregando insumos...</li>';
+
+    let items = [];
+    if (supabaseClient && pedidoId) {
+        const { data } = await supabaseClient.from('insumos').select('*').eq('pedido_id', pedidoId);
+        if (data && data.length > 0) items = data;
+    }
+
+    // Fallback if no insumos registered
+    if (items.length === 0) {
+        items = [
+            { nome_insumo: 'Polímero PVC-S', status: 'green', detalhes: 'Lote Verificado' },
+            { nome_insumo: 'Aditivo Estabilizante', status: 'yellow', detalhes: 'Reposição em 1 dia' },
+            { nome_insumo: 'Pigmento Preto', status: 'green', detalhes: 'Estoque OK' },
+        ];
+    }
+
+    const hasCritical = items.some(i => i.status === 'red');
+    if (alertEl) alertEl.style.display = hasCritical ? 'flex' : 'none';
+
+    list.innerHTML = items.map(ins => `
+        <li class="semaforo-item">
+            <div class="semaforo-left">
+                <div class="dot ${ins.status}"></div>
+                <div class="item-name">${ins.nome_insumo}</div>
+            </div>
+            <div class="item-details">${ins.detalhes || ''}</div>
+        </li>
+    `).join('');
+
     if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 

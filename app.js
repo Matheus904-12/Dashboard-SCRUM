@@ -204,11 +204,16 @@ function selectOrder(order) {
   document.getElementById('l-rastreio').textContent = o.codigo_rastreio || '—';
   renderReadyList();
 
-  // Load insumos
+  // Load insumos (tab + bottom grid)
   loadInsumos(o.id);
 
   // ERP table
   renderErpTable();
+
+  // Bottom grid: chart + logistics + risk
+  updateBottomChart(dias, ETAPAS[activeStep - 1]?.label || '—');
+  updateBottomLogistics(o);
+  updateBottomRisk();
 
   // Switch to current tab
   switchTab(activeTab);
@@ -229,21 +234,126 @@ async function loadInsumos(pedidoId) {
     const hasCritical = items.some(i => i.status === 'red');
     document.getElementById('insumos-alert').style.display = hasCritical ? 'block' : 'none';
 
-    listEl.innerHTML = items.map(ins => {
+    const rowHtml = items.map(ins => {
       const badgeClass = ins.status === 'green' ? 'badge-ok' : ins.status === 'yellow' ? 'badge-warn' : 'badge-err';
       const label = { green: 'OK', yellow: 'ATENÇÃO', red: 'CRÍTICO' }[ins.status] || ins.status;
-      return `
-        <div class="insumo-row">
-          <div style="width:10px; height:10px; border-radius:50%; background:${STATUS_DOT[ins.status] || '#888'}; flex-shrink:0;"></div>
-          <div style="flex:1;">
-            <div style="font-size:13px; color:#e8e4dc; font-family:'IBM Plex Sans',sans-serif;">${ins.nome_insumo}</div>
-            ${ins.detalhes ? `<div style="font-size:11px; color:#555; margin-top:2px;">${ins.detalhes}</div>` : ''}
-          </div>
-          <span class="badge ${badgeClass}">${label}</span>
-        </div>`;
+      const dot = `<div style="width:10px;height:10px;border-radius:50%;background:${STATUS_DOT[ins.status]||'#888'};flex-shrink:0;"></div>`;
+      return `<div class="insumo-row">${dot}
+        <div style="flex:1;"><div style="font-size:13px;color:var(--text);font-family:'IBM Plex Sans',sans-serif;">${ins.nome_insumo}</div>
+        ${ins.detalhes ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${ins.detalhes}</div>` : ''}</div>
+        <span class="badge ${badgeClass}">${label}</span></div>`;
     }).join('');
+
+    listEl.innerHTML = rowHtml;
+
+    // Also update bottom grid semáforo
+    const d2list = document.getElementById('insumos-list-d2');
+    const d2alert = document.getElementById('insumos-alert-d2');
+    if (d2list) {
+      d2list.innerHTML = items.map(ins => `
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
+          <div style="width:10px;height:10px;border-radius:50%;background:${STATUS_DOT[ins.status]||'#888'};flex-shrink:0;"></div>
+          <div style="flex:1;font-size:12px;color:var(--text);font-family:'IBM Plex Sans',sans-serif;">${ins.nome_insumo}</div>
+          <div style="font-size:11px;color:var(--text-muted);">${ins.detalhes||''}</div>
+        </div>`).join('');
+    }
+    if (d2alert) d2alert.style.display = hasCritical ? 'block' : 'none';
   } catch {
     listEl.innerHTML = '<div style="padding:24px; color:#444; font-size:12px; text-align:center;">Erro ao carregar insumos</div>';
+  }
+}
+
+// ── BOTTOM GRID FUNCTIONS ────────────────────────────────────
+function updateBottomChart(dias, etapaLabel) {
+  const labelEl = document.getElementById('d2-etapa-label');
+  const timeEl = document.getElementById('d2-etapa-time');
+  const alertEl = document.getElementById('d2-chart-alert');
+  const daysEl = document.getElementById('d2-delay-days');
+  if (labelEl) labelEl.textContent = etapaLabel;
+  if (timeEl) timeEl.textContent = `${dias} dias`;
+  if (alertEl) alertEl.style.display = dias > 2 ? 'block' : 'none';
+  if (daysEl) daysEl.textContent = dias;
+
+  const ctx = document.getElementById('d2-stageChart')?.getContext('2d');
+  if (!ctx) return;
+  if (window._d2Chart) window._d2Chart.destroy();
+  window._d2Chart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['Média InovaMold', 'Este Pedido'],
+      datasets: [{
+        data: [1.5, dias],
+        backgroundColor: ['#2a2a2a', dias > 2 ? '#ef4444' : '#d4af37'],
+        borderRadius: 4
+      }]
+    },
+    options: {
+      indexAxis: 'y', responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { display: false, min: 0, grid: { color: '#1e1e1e' } },
+        y: { grid: { display: false }, ticks: { color: '#555', font: { size: 10 } } }
+      }
+    }
+  });
+}
+
+function updateBottomLogistics(o) {
+  const trackInfo = document.getElementById('d2-tracking-info');
+  const company = document.getElementById('d2-tracking-company');
+  const code = document.getElementById('d2-tracking-code');
+  const readyCount = document.getElementById('d2-ready-count');
+  const readyList = document.getElementById('d2-ready-orders-list');
+
+  if (trackInfo && o.transportadora) {
+    trackInfo.style.display = 'block';
+    if (company) company.textContent = o.transportadora;
+    if (code) code.textContent = o.codigo_rastreio || 'Pendente';
+  } else if (trackInfo) {
+    trackInfo.style.display = 'none';
+  }
+
+  const ready = allOrders.filter(x => x.etapa_atual_index === 7);
+  if (readyCount) readyCount.textContent = ready.length;
+  if (readyList) {
+    readyList.innerHTML = ready.length === 0
+      ? `<div style="font-size:12px;color:var(--text-muted);padding:8px 0;">Nenhum pedido aguardando</div>`
+      : ready.map(x => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--bg-base);border-radius:6px;margin-bottom:6px;cursor:pointer;" onclick="selectOrderById('${x.numero_pedido}')">
+          <div>
+            <div style="font-size:12px;color:var(--accent);font-weight:500;">${x.numero_pedido}</div>
+            <div style="font-size:11px;color:var(--text-muted);">${x.cliente}</div>
+          </div>
+          <span class="badge badge-warn">FATURADO</span>
+        </div>`).join('');
+  }
+}
+
+function updateBottomRisk() {
+  const summary = document.getElementById('d2-risk-summary');
+  const tbody = document.getElementById('d2-risk-table-body');
+  if (!summary || !tbody) return;
+
+  const delayed = allOrders.filter(o => {
+    const days = o.data_entrada_etapa ? Math.floor((Date.now() - new Date(o.data_entrada_etapa)) / 86400000) : 0;
+    return days > 2 && o.etapa_atual_index < 8;
+  });
+
+  if (delayed.length === 0) {
+    summary.textContent = 'Cadeia de suprimentos estável. Nenhum gargalo crítico.';
+    summary.style.background = 'var(--accent-bg)';
+    summary.style.color = 'var(--accent)';
+    tbody.innerHTML = '';
+  } else {
+    summary.textContent = `${delayed.length} pedido(s) retido(s) por mais de 2 dias na mesma etapa.`;
+    summary.style.background = '#1a1000';
+    summary.style.color = '#f59e0b';
+    tbody.innerHTML = delayed.slice(0, 5).map(o => `
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:8px;color:var(--accent);font-size:11px;">${o.numero_pedido}</td>
+        <td style="padding:8px;color:var(--text-dim);font-size:11px;">${ETAPAS[o.etapa_atual_index - 1]?.label || '—'}</td>
+        <td style="padding:8px;font-size:11px;"><span style="color:#ef4444;">Alto</span></td>
+      </tr>`).join('');
   }
 }
 
