@@ -44,6 +44,7 @@ async function refreshData() {
         if (data) {
             allOrders = data;
             renderAdminTable();
+            renderQuickOrderList();
             updateRiskTable();
             updateLogisticsSummary();
             if (allOrders.length > 0 && !currentOrder) {
@@ -147,6 +148,20 @@ async function loadInsumos(pedidoId) {
 }
 
 // Admin Logic (CRUD)
+function renderQuickOrderList() {
+    const list = document.getElementById('quick-order-list');
+    list.innerHTML = '';
+    
+    // Show last 5 orders
+    allOrders.slice(0, 5).forEach(o => {
+        const span = document.createElement('span');
+        span.className = `order-tag ${currentOrder && currentOrder.id === o.id ? 'active' : ''}`;
+        span.innerText = o.numero_pedido;
+        span.onclick = () => loadOrder(o);
+        list.appendChild(span);
+    });
+}
+
 function renderAdminTable() {
     const tbody = document.getElementById('admin-table-body');
     tbody.innerHTML = '';
@@ -343,6 +358,8 @@ function updateLogisticsSummary() {
     ready.forEach(o => {
         const div = document.createElement('div');
         div.className = 'pedido-mini-card';
+        div.style.cursor = 'pointer';
+        div.onclick = () => loadOrder(o);
         div.innerHTML = `<div><div class="id">${o.numero_pedido}</div><div class="client">${o.cliente}</div></div> <i data-lucide="arrow-right"></i>`;
         list.appendChild(div);
     });
