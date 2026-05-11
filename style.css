@@ -597,6 +597,27 @@ button[type="submit"]:hover {
     padding: 1rem;
     font-size: 0.85rem;
 }
+.action-btn-icon {
+    background: #f1f3f5;
+    border: none;
+    padding: 8px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.action-btn-icon.edit:hover {
+    background: #e7f5ff;
+    color: #228be6;
+}
+
+.action-btn-icon.delete:hover {
+    background: #fff5f5;
+    color: #fa5252;
+}
 
 .order-tag {
     padding: 6px 12px;

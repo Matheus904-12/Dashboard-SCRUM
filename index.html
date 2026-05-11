@@ -173,25 +173,23 @@
                 </div>
             </section>
 
-            <!-- Risk Table -->
-            <section class="sub-card">
-                 <h3 class="card-title">Pedidos em Risco (Insumos Compartilhados)</h3>
-                 <div class="risk-alert" id="risk-summary">
-                    Analisando cadeia de suprimentos...
+            <!-- Gestão de Pedidos (CRUD fora do modal) -->
+            <section class="sub-card" style="grid-column: span 1;">
+                 <h3 class="card-title">Gestão de Pedidos (InovaMold ERP)</h3>
+                 <div style="overflow-x: auto; max-height: 300px;">
+                     <table style="width: 100%; border-collapse: collapse;">
+                         <thead>
+                             <tr>
+                                 <th>Pedido</th>
+                                 <th>Cliente</th>
+                                 <th style="text-align: center;">Ações</th>
+                             </tr>
+                         </thead>
+                         <tbody id="dashboard-table-body">
+                             <!-- Rows via JS -->
+                         </tbody>
+                     </table>
                  </div>
-                 <table>
-                     <thead>
-                         <tr>
-                             <th>Pedido</th>
-                             <th>Etapa</th>
-                             <th>Insumo Crítico</th>
-                             <th>Impacto</th>
-                         </tr>
-                     </thead>
-                     <tbody id="risk-table-body">
-                         <!-- Table rows -->
-                     </tbody>
-                 </table>
             </section>
         </div>
     </div>
@@ -210,27 +208,10 @@
                 <button class="tab-btn" id="tab-form">Novo / Editar</button>
             </div>
 
-            <!-- List View -->
-            <div id="view-list">
-                <div style="max-height: 400px; overflow-y: auto;">
-                    <table style="width: 100%; border-collapse: collapse;">
-                        <thead>
-                            <tr>
-                                <th>Pedido</th>
-                                <th>Cliente</th>
-                                <th>Status</th>
-                                <th>Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody id="admin-table-body">
-                            <!-- Rows via JS -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+            <!-- List View REMOVED - Table is now on main dashboard -->
 
             <!-- Form View -->
-            <div id="view-form" style="display: none;">
+            <div id="view-form">
                 <form id="order-form">
                     <input type="hidden" id="order-id">
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">

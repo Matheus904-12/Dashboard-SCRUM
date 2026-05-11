@@ -181,7 +181,8 @@ function renderQuickOrderList() {
 }
 
 function renderAdminTable() {
-    const tbody = document.getElementById('admin-table-body');
+    const tbody = document.getElementById('dashboard-table-body');
+    if (!tbody) return;
     tbody.innerHTML = '';
     
     allOrders.forEach(o => {
@@ -189,14 +190,18 @@ function renderAdminTable() {
         tr.innerHTML = `
             <td><b>${o.numero_pedido}</b></td>
             <td>${o.cliente}</td>
-            <td><span style="font-size: 0.7rem;">${getEtapaName(o.etapa_atual_index)}</span></td>
-            <td>
-                <button class="action-btn edit-btn" onclick="openEditMode('${o.numero_pedido}')">Editar</button>
-                <button class="action-btn delete-btn" onclick="deleteOrder('${o.numero_pedido}')">Excluir</button>
+            <td style="text-align: center; display: flex; gap: 0.5rem; justify-content: center;">
+                <button class="action-btn-icon edit" onclick="openEditMode('${o.numero_pedido}')" title="Editar">
+                    <i data-lucide="edit-3" style="width: 16px; height: 16px;"></i>
+                </button>
+                <button class="action-btn-icon delete" onclick="deleteOrder('${o.numero_pedido}')" title="Excluir">
+                    <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i>
+                </button>
             </td>
         `;
         tbody.appendChild(tr);
     });
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 window.openEditMode = (numeroPedido) => {
