@@ -1,221 +1,179 @@
-// State Management
-const state = {
-    team: JSON.parse(localStorage.getItem('scrum_team')) || [
-        { id: 1, name: 'Você (PO)', role: 'PO' },
-        { id: 2, name: 'Gerente Operacional', role: 'Manager' },
-        { id: 3, name: 'Dev Alpha', role: 'Dev' },
-        { id: 4, name: 'Dev Beta', role: 'Dev' },
-        { id: 5, name: 'Dev Gamma', role: 'Dev' }
+// Supabase Configuration
+// ATENÇÃO: Substitua pelas suas credenciais do Supabase
+const SUPABASE_URL = ''; 
+const SUPABASE_ANON_KEY = '';
+
+let supabase = null;
+if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+}
+
+// Mock Data (Based on the images provided)
+const mockData = {
+    pedido: {
+        id: 'PED-2024-001',
+        lote: 'LOTE-A-2024-045',
+        cliente: 'Confecções Silva Ltda',
+        valor: 45800.00,
+        prazo: '2026-05-15',
+        status: 'No Prazo',
+        etapa_atual_index: 6 // Separação Expedição
+    },
+    etapas: [
+        { nome: 'Criado no Comercial', data: '2026-04-10' },
+        { nome: 'OP Gerada no PCP', data: '2026-04-11' },
+        { nome: 'Início Produção', data: '2026-04-15' },
+        { nome: 'Fim Produção', data: '2026-04-28' },
+        { nome: 'Entrada no Estoque', data: '2026-04-29' },
+        { nome: 'Separação Expedição', data: '2026-05-04' },
+        { nome: 'Faturado', data: null },
+        { nome: 'Enviado', data: null }
     ],
-    demands: JSON.parse(localStorage.getItem('scrum_demands')) || [],
-    metrics: JSON.parse(localStorage.getItem('scrum_metrics')) || {
-        sales: 45250.75,
-        inventory: 88,
-        logistics: 142,
-        simulation: true
-    }
+    insumos: [
+        { nome: 'Tecido 100% Algodão', status: 'green' },
+        { nome: 'Aviamento Botões', status: 'green' },
+        { nome: 'Linha de Costura', status: 'yellow', extra: 'Reposição em 2 dias' },
+        { nome: 'Etiquetas', status: 'green' }
+    ],
+    riscos: [
+        { id: 'PED-2024-004', cliente: 'Fashion Store Rio', etapa: 'Fim Produção', insumos: ['Tecido Poliéster', 'Linha de Costura'], prazo: '2026-05-08' }
+    ]
 };
 
-// Initialize Charts
-let salesChart, inventoryChart;
+// State Management
+let currentPedido = mockData.pedido;
+let currentEtapas = mockData.etapas;
 
-function initCharts() {
-    const ctxSales = document.getElementById('salesChart').getContext('2d');
-    salesChart = new Chart(ctxSales, {
-        type: 'line',
+// Update UI Functions
+function updateDashboard(data = mockData) {
+    const { pedido, etapas, insumos, riscos } = data;
+
+    // Header & Info Cards
+    document.getElementById('display-pedido-id').innerText = pedido.id;
+    document.getElementById('display-lote-id').innerText = pedido.lote;
+    document.getElementById('card-cliente').innerText = pedido.cliente;
+    document.getElementById('card-valor').innerText = `R$ ${pedido.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+    document.getElementById('card-prazo').innerText = pedido.prazo;
+    document.getElementById('card-status').innerText = pedido.status;
+
+    // Timeline
+    const steps = document.querySelectorAll('.step');
+    const progressLine = document.getElementById('timeline-progress');
+    let activeIndex = pedido.etapa_atual_index;
+    
+    steps.forEach((step, idx) => {
+        const stepIdx = idx + 1;
+        if (stepIdx <= activeIndex) {
+            step.classList.add('active');
+            step.querySelector('.step-date').innerText = etapas[idx].data || '';
+        } else {
+            step.classList.remove('active');
+            step.querySelector('.step-date').innerText = '-';
+        }
+    });
+
+    const progressPercent = ((activeIndex - 1) / (steps.length - 1)) * 100;
+    progressLine.style.width = `${progressPercent}%`;
+
+    // Insumos
+    const insumosList = document.getElementById('insumos-list');
+    insumosList.innerHTML = '';
+    insumos.forEach(item => {
+        const li = document.createElement('li');
+        li.className = 'semaforo-item';
+        li.innerHTML = `
+            <div class="semaforo-left">
+                <div class="dot ${item.status}"></div>
+                <span class="item-name">${item.nome}</span>
+            </div>
+            ${item.extra ? `<span class="item-details">${item.extra}</span>` : ''}
+        `;
+        insumosList.appendChild(li);
+    });
+
+    // Chart & Etapa Info
+    const currentEtapa = etapas[activeIndex - 1];
+    document.getElementById('etapa-label').innerText = currentEtapa.nome;
+    document.getElementById('etapa-data').innerText = currentEtapa.data || '-';
+    updateChart();
+
+    // Risks Table
+    const riskTable = document.getElementById('risk-table-body');
+    riskTable.innerHTML = '';
+    riscos.forEach(risk => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><span style="color: var(--accent-danger)">●</span> ${risk.id}</td>
+            <td>${risk.cliente}</td>
+            <td>${risk.etapa}</td>
+            <td>
+                ${risk.insumos.map(i => `<div style="font-size: 0.7rem;"><span style="color: var(--accent-warning)">●</span> ${i}</div>`).join('')}
+            </td>
+            <td style="color: var(--accent-danger)">${risk.prazo}</td>
+        `;
+        riskTable.appendChild(tr);
+    });
+}
+
+function updateChart() {
+    const ctx = document.getElementById('stageChart').getContext('2d');
+    
+    // Clear previous chart if exists
+    if (window.myChart) window.myChart.destroy();
+
+    window.myChart = new Chart(ctx, {
+        type: 'bar',
         data: {
-            labels: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00'],
+            labels: ['Média da Fábrica', 'Este Pedido'],
             datasets: [{
-                label: 'Vendas (R$)',
-                data: [12000, 19000, 15000, 25000, 22000, 30000],
-                borderColor: '#00f2ff',
-                backgroundColor: 'rgba(0, 242, 255, 0.1)',
-                fill: true,
-                tension: 0.4
-            }, {
-                label: 'Logística (Envios)',
-                data: [50, 80, 70, 120, 110, 150],
-                borderColor: '#7000ff',
-                backgroundColor: 'rgba(112, 0, 255, 0.1)',
-                fill: true,
-                tension: 0.4
+                data: [1.2, 3], // Mocked days
+                backgroundColor: ['#1a1a1a', '#dc3545'],
+                borderRadius: 5,
+                barThickness: 30
             }]
         },
         options: {
+            indexAxis: 'y',
             responsive: true,
-            plugins: { legend: { labels: { color: '#fff' } } },
+            plugins: { legend: { display: false } },
             scales: {
-                y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#b0b0b0' } },
-                x: { grid: { display: false }, ticks: { color: '#b0b0b0' } }
+                x: { grid: { display: false }, ticks: { color: '#6c757d' } },
+                y: { grid: { display: false }, ticks: { color: '#1a1a1a', font: { weight: 'bold' } } }
             }
         }
     });
 
-    const ctxInv = document.getElementById('inventoryChart').getContext('2d');
-    inventoryChart = new Chart(ctxInv, {
-        type: 'doughnut',
-        data: {
-            labels: ['Em Estoque', 'Em Trânsito', 'Crítico'],
-            datasets: [{
-                data: [70, 20, 10],
-                backgroundColor: ['#00ff88', '#00f2ff', '#ff4d4d'],
-                borderWidth: 0
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: { legend: { position: 'bottom', labels: { color: '#fff' } } }
-        }
-    });
+    document.getElementById('chart-alert').style.display = 'flex';
+    document.getElementById('delay-days').innerText = '1.8';
 }
 
-// Update UI
-function updateUI() {
-    // Update KPIs
-    document.getElementById('kpi-sales').innerText = `R$ ${state.metrics.sales.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
-    document.getElementById('kpi-inventory').innerText = `${state.metrics.inventory}%`;
-    document.getElementById('kpi-logistics').innerText = state.metrics.logistics;
+// Supabase Logic (To be implemented when keys are provided)
+async function fetchFromSupabase() {
+    if (!supabase) return;
 
-    // Update Team List
-    const teamList = document.getElementById('team-list');
-    teamList.innerHTML = '';
-    state.team.forEach(member => {
-        const div = document.createElement('div');
-        div.className = 'item-card';
-        div.innerHTML = `
-            <div class="item-info">
-                <h4>${member.name}</h4>
-                <p>Membro do Time Scrum</p>
-            </div>
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <span class="badge badge-${member.role.toLowerCase()}">${member.role}</span>
-                <button class="btn-icon btn-delete" onclick="deleteMember(${member.id})">🗑️</button>
-            </div>
-        `;
-        teamList.appendChild(div);
-    });
+    try {
+        const { data: orders, error } = await supabase
+            .from('pedidos')
+            .select('*')
+            .limit(1)
+            .single();
 
-    // Update Demand List
-    const demandList = document.getElementById('demand-list');
-    demandList.innerHTML = '';
-    [...state.demands].reverse().forEach(demand => {
-        const div = document.createElement('div');
-        div.className = 'item-card';
-        div.innerHTML = `
-            <div class="item-info">
-                <h4>${demand.title} ${demand.completed ? '✅' : ''}</h4>
-                <p>Prioridade: <span class="status-${demand.priority.toLowerCase()}">${demand.priority}</span></p>
-            </div>
-            <div class="item-actions">
-                <button class="btn-icon btn-complete" onclick="toggleDemand(${demand.id})">${demand.completed ? '↩️' : '✔️'}</button>
-                <button class="btn-icon btn-delete" onclick="deleteDemand(${demand.id})">🗑️</button>
-            </div>
-        `;
-        demandList.appendChild(div);
-    });
-}
-
-// Actions
-window.deleteMember = (id) => {
-    state.team = state.team.filter(m => m.id !== id);
-    localStorage.setItem('scrum_team', JSON.stringify(state.team));
-    updateUI();
-};
-
-window.deleteDemand = (id) => {
-    state.demands = state.demands.filter(d => d.id !== id);
-    localStorage.setItem('scrum_demands', JSON.stringify(state.demands));
-    updateUI();
-};
-
-window.toggleDemand = (id) => {
-    const demand = state.demands.find(d => d.id === id);
-    if (demand) demand.completed = !demand.completed;
-    localStorage.setItem('scrum_demands', JSON.stringify(state.demands));
-    updateUI();
-};
-
-// Real-time Simulation
-function simulateRealTime() {
-    setInterval(() => {
-        if (!state.metrics.simulation) return;
-
-        // Randomly fluctuate sales
-        state.metrics.sales += (Math.random() * 100);
-        state.metrics.logistics += Math.random() > 0.7 ? 1 : 0;
+        if (error) throw error;
         
-        // Update KPIs on UI
-        document.getElementById('kpi-sales').innerText = `R$ ${state.metrics.sales.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
-        document.getElementById('kpi-logistics').innerText = state.metrics.logistics;
-
-        // Update Charts (last point)
-        if (salesChart) {
-            const lastIndex = salesChart.data.datasets[0].data.length - 1;
-            salesChart.data.datasets[0].data[lastIndex] += Math.random() * 50;
-            salesChart.update('none');
-        }
-    }, 3000);
-
-    setInterval(() => {
-        const now = new Date();
-        document.getElementById('current-time').innerText = now.toLocaleTimeString('pt-BR');
-    }, 1000);
+        // This is where real data mapping would happen
+        console.log("Data from Supabase:", orders);
+    } catch (err) {
+        console.error("Supabase Error:", err.message);
+    }
 }
 
 // Event Listeners
-document.getElementById('team-form').addEventListener('submit', (e) => {
-    e.preventDefault();
-    const name = document.getElementById('member-name').value;
-    const role = document.getElementById('member-role').value;
-    
-    state.team.push({ id: Date.now(), name, role });
-    localStorage.setItem('scrum_team', JSON.stringify(state.team));
-    updateUI();
-    e.target.reset();
-});
-
-document.getElementById('demand-form').addEventListener('submit', (e) => {
-    e.preventDefault();
-    const title = document.getElementById('demand-title').value;
-    const priority = document.getElementById('demand-priority').value;
-    
-    state.demands.push({ id: Date.now(), title, priority, completed: false });
-    localStorage.setItem('scrum_demands', JSON.stringify(state.demands));
-    updateUI();
-    e.target.reset();
-});
-
-// Modal Logic
-const modal = document.getElementById('config-modal');
-const btnConfig = document.getElementById('btn-config');
-const btnClose = document.getElementById('close-modal');
-
-btnConfig.onclick = () => {
-    document.getElementById('input-sales').value = state.metrics.sales.toFixed(2);
-    document.getElementById('input-inventory').value = state.metrics.inventory;
-    document.getElementById('input-logistics').value = state.metrics.logistics;
-    document.getElementById('toggle-sim').checked = state.metrics.simulation;
-    modal.style.display = 'flex';
+document.getElementById('btn-admin').onclick = () => {
+    alert("Para vincular o Supabase:\n1. Adicione as chaves no topo do app.js\n2. Execute o init.sql no seu painel do Supabase.");
 };
-
-btnClose.onclick = () => modal.style.display = 'none';
-window.onclick = (e) => { if (e.target === modal) modal.style.display = 'none'; };
-
-document.getElementById('config-form').addEventListener('submit', (e) => {
-    e.preventDefault();
-    state.metrics.sales = parseFloat(document.getElementById('input-sales').value);
-    state.metrics.inventory = parseInt(document.getElementById('input-inventory').value);
-    state.metrics.logistics = parseInt(document.getElementById('input-logistics').value);
-    state.metrics.simulation = document.getElementById('toggle-sim').checked;
-    
-    localStorage.setItem('scrum_metrics', JSON.stringify(state.metrics));
-    updateUI();
-    modal.style.display = 'none';
-});
 
 // Init
 window.onload = () => {
-    initCharts();
-    updateUI();
-    simulateRealTime();
+    updateDashboard();
+    fetchFromSupabase();
 };

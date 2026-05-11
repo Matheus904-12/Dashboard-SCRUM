@@ -3,136 +3,171 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SCRUM Nexus | Dashboard em Tempo Real</title>
+    <title>Logistics Monitor | Enterprise Dashboard</title>
     <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <meta name="description" content="Dashboard SCRUM em tempo real para vendas, estoque e logística. Gestão de demandas e equipe.">
 </head>
 <body>
-    <div class="dashboard-container">
-        <header>
-            <div class="header-left">
-                <h1>SCRUM Nexus</h1>
-                <p style="color: var(--text-secondary); font-size: 0.9rem;">Visão Unificada: Vendas • Estoque • Logística</p>
+    <div class="container">
+        <!-- Search Header -->
+        <header class="header-search">
+            <div class="search-container">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="search-order" placeholder="Buscar por nº do pedido, cliente ou lote...">
             </div>
-            <div class="header-right">
-                <button id="btn-config" style="padding: 0.5rem 1rem; margin-right: 1rem; background: rgba(255,255,255,0.1); border: 1px solid var(--glass-border);">⚙️ Dados Reais</button>
-                <div id="current-time" style="font-weight: 600; font-size: 1.1rem;">00:00:00</div>
-                <div style="font-size: 0.8rem; color: var(--accent-success);">● SISTEMA ONLINE</div>
+            <div class="pedido-info-top">
+                <span>Pedido selecionado: <b id="display-pedido-id">-</b></span>
+                <span>Lote: <b id="display-lote-id">-</b></span>
             </div>
         </header>
 
-        <!-- KPI Summary -->
-        <div class="kpi-grid">
-            <div class="glass-card">
-                <div class="kpi-title">Vendas Totais (24h)</div>
-                <div class="kpi-value" id="kpi-sales">R$ 0,00</div>
-                <div style="color: var(--accent-success); font-size: 0.8rem; margin-top: 5px;">↑ 12.5% vs ontem</div>
-            </div>
-            <div class="glass-card">
-                <div class="kpi-title">Saúde do Estoque</div>
-                <div class="kpi-value" id="kpi-inventory">0%</div>
-                <div style="color: var(--accent-warning); font-size: 0.8rem; margin-top: 5px;">3 itens em nível crítico</div>
-            </div>
-            <div class="glass-card">
-                <div class="kpi-title">Logística (Entregas)</div>
-                <div class="kpi-value" id="kpi-logistics">0</div>
-                <div style="color: var(--accent-primary); font-size: 0.8rem; margin-top: 5px;">98% dentro do prazo</div>
-            </div>
-        </div>
-
-        <!-- Real-time Charts -->
-        <div class="chart-grid">
-            <div class="glass-card">
-                <h3 class="section-title">Fluxo de Vendas e Logística</h3>
-                <canvas id="salesChart" height="200"></canvas>
-            </div>
-            <div class="glass-card">
-                <h3 class="section-title">Distribuição de Carga</h3>
-                <canvas id="inventoryChart" height="200"></canvas>
-            </div>
-        </div>
-
-        <!-- Management Sections -->
-        <div class="main-content">
-            <!-- Team Management -->
-            <div class="glass-card">
-                <h3 class="section-title">Equipe Scrum</h3>
-                <form id="team-form">
-                    <div class="input-group">
-                        <label>Nome do Companheiro</label>
-                        <input type="text" id="member-name" placeholder="Ex: João Silva" required>
-                    </div>
-                    <div class="input-group">
-                        <label>Papel</label>
-                        <select id="member-role" required>
-                            <option value="PO">Product Owner</option>
-                            <option value="Manager">Gerente</option>
-                            <option value="Dev">Desenvolvedor</option>
-                        </select>
-                    </div>
-                    <button type="submit">Registrar Membro</button>
-                </form>
-                <hr style="margin: 1.5rem 0; border: none; border-top: 1px solid var(--glass-border);">
-                <div class="list-container" id="team-list">
-                    <!-- Members will be injected here -->
+        <!-- Timeline Stepper -->
+        <main class="main-card">
+            <div class="timeline-container">
+                <div class="timeline-line"></div>
+                <div id="timeline-progress" class="timeline-progress" style="width: 0%;"></div>
+                
+                <div class="step" data-step="1">
+                    <div class="step-circle">🛒</div>
+                    <span class="step-label">Criado no Comercial</span>
+                    <span class="step-date">-</span>
+                </div>
+                <div class="step" data-step="2">
+                    <div class="step-circle">📄</div>
+                    <span class="step-label">OP Gerada no PCP</span>
+                    <span class="step-date">-</span>
+                </div>
+                <div class="step" data-step="3">
+                    <div class="step-circle">▶️</div>
+                    <span class="step-label">Início Produção</span>
+                    <span class="step-date">-</span>
+                </div>
+                <div class="step" data-step="4">
+                    <div class="step-circle">✔️</div>
+                    <span class="step-label">Fim Produção</span>
+                    <span class="step-date">-</span>
+                </div>
+                <div class="step" data-step="5">
+                    <div class="step-circle">📦</div>
+                    <span class="step-label">Entrada no Estoque</span>
+                    <span class="step-date">-</span>
+                </div>
+                <div class="step" data-step="6">
+                    <div class="step-circle">📋</div>
+                    <span class="step-label">Separação Expedição</span>
+                    <span class="step-date">-</span>
+                </div>
+                <div class="step" data-step="7">
+                    <div class="step-circle">💰</div>
+                    <span class="step-label">Faturado</span>
+                    <span class="step-date">-</span>
+                </div>
+                <div class="step" data-step="8">
+                    <div class="step-circle">🚚</div>
+                    <span class="step-label">Enviado</span>
+                    <span class="step-date">-</span>
                 </div>
             </div>
 
-            <!-- Demand Management -->
-            <div class="glass-card">
-                <h3 class="section-title">Demandas dos Clientes</h3>
-                <form id="demand-form">
-                    <div class="input-group">
-                        <label>Título da Demanda</label>
-                        <input type="text" id="demand-title" placeholder="Ex: Novo módulo de relatórios" required>
+            <!-- Info Box Row -->
+            <div class="info-row">
+                <div class="info-box">
+                    <div class="info-icon-box">👤</div>
+                    <div class="info-content">
+                        <span class="label">Cliente</span>
+                        <span class="value" id="card-cliente">-</span>
                     </div>
-                    <div class="input-group">
-                        <label>Prioridade</label>
-                        <select id="demand-priority" required>
-                            <option value="High">Alta</option>
-                            <option value="Medium">Média</option>
-                            <option value="Low">Baixa</option>
-                        </select>
+                </div>
+                <div class="info-box">
+                    <div class="info-icon-box">💰</div>
+                    <div class="info-content">
+                        <span class="label">Valor</span>
+                        <span class="value" id="card-valor">R$ 0,00</span>
                     </div>
-                    <button type="submit">Lançar Demanda</button>
-                </form>
-                <hr style="margin: 1.5rem 0; border: none; border-top: 1px solid var(--glass-border);">
-                <div class="list-container" id="demand-list">
-                    <!-- Demands will be injected here -->
+                </div>
+                <div class="info-box">
+                    <div class="info-icon-box">📅</div>
+                    <div class="info-content">
+                        <span class="label">Prazo</span>
+                        <span class="value" id="card-prazo">-</span>
+                    </div>
+                </div>
+                <div class="info-box">
+                    <div class="info-icon-box" style="color: var(--accent-success);">🕒</div>
+                    <div class="info-content">
+                        <span class="label">Status</span>
+                        <span class="value" id="card-status" style="color: var(--accent-success);">Carregando...</span>
+                    </div>
                 </div>
             </div>
+        </main>
+
+        <!-- Secondary Content Grid -->
+        <div class="details-grid">
+            <!-- Semáforo -->
+            <section class="sub-card">
+                <h3 class="card-title">Semáforo de Insumos</h3>
+                <ul class="semaforo-list" id="insumos-list">
+                    <!-- Items injected via JS -->
+                </ul>
+            </section>
+
+            <!-- Chart -->
+            <section class="sub-card">
+                <h3 class="card-title">Permanência na Etapa Atual</h3>
+                <div style="background: #f8f9fa; padding: 1rem; border-radius: 12px; margin-bottom: 1rem;">
+                    <span style="font-size: 0.8rem; color: var(--text-secondary);">Etapa atual: <b id="etapa-label">-</b></span><br>
+                    <span style="font-size: 0.8rem; color: var(--text-secondary);">Desde <span id="etapa-data">-</span></span>
+                </div>
+                <canvas id="stageChart" height="150"></canvas>
+                <div class="alert-box" id="chart-alert" style="display: none;">
+                    ⚠️ Este pedido está <span id="delay-days">0</span> dia(s) acima da média
+                </div>
+            </section>
+
+            <!-- Shipping Status -->
+            <section class="sub-card">
+                <h3 class="card-title">Status de Expedição e Entrega</h3>
+                <div class="status-bottom-card">
+                    <span style="font-size: 1.5rem;">🕒</span>
+                    <div>
+                        <div style="font-weight: 600; font-size: 0.9rem;">Pedido em Processamento</div>
+                        <div style="font-size: 0.75rem; color: var(--text-secondary);">Ainda não faturado</div>
+                    </div>
+                </div>
+                <p style="font-size: 0.8rem; font-weight: 600; margin-bottom: 1rem;">Pedidos Prontos Aguardando Expedição (2)</p>
+                <div id="ready-orders-list">
+                    <!-- Mini cards -->
+                </div>
+            </section>
+
+            <!-- Risk Table -->
+            <section class="sub-card" style="grid-column: span 1;">
+                 <h3 class="card-title">Pedidos Similares em Risco</h3>
+                 <div class="risk-alert">
+                    ⚠️ 1 pedido(s) com insumos críticos compartilhados ou na mesma etapa
+                 </div>
+                 <table>
+                     <thead>
+                         <tr>
+                             <th>Pedido</th>
+                             <th>Cliente</th>
+                             <th>Etapa Atual</th>
+                             <th>Insumos Críticos</th>
+                             <th>Prazo</th>
+                         </tr>
+                     </thead>
+                     <tbody id="risk-table-body">
+                         <!-- Table rows injected via JS -->
+                     </tbody>
+                 </table>
+            </section>
         </div>
     </div>
 
-    <!-- Configuration Modal -->
-    <div id="config-modal" class="modal-overlay" style="display: none;">
-        <div class="glass-card modal-content">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                <h3 class="section-title" style="margin-bottom: 0;">Centro de Controle: Números Reais</h3>
-                <button id="close-modal" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
-            </div>
-            <form id="config-form">
-                <div class="input-group">
-                    <label>Vendas Totais (R$)</label>
-                    <input type="number" id="input-sales" step="0.01" required>
-                </div>
-                <div class="input-group">
-                    <label>Saúde do Estoque (%)</label>
-                    <input type="number" id="input-inventory" min="0" max="100" required>
-                </div>
-                <div class="input-group">
-                    <label>Total de Entregas (Logística)</label>
-                    <input type="number" id="input-logistics" required>
-                </div>
-                <div style="display: flex; gap: 1rem; align-items: center; margin: 1rem 0;">
-                    <input type="checkbox" id="toggle-sim" style="width: auto;">
-                    <label for="toggle-sim">Ativar Simulação de Oscilação (Tempo Real)</label>
-                </div>
-                <button type="submit">Salvar Dados Reais</button>
-            </form>
-        </div>
-    </div>
+    <!-- Admin Float Button (To add/edit data) -->
+    <button id="btn-admin" style="position: fixed; bottom: 20px; right: 20px; background: #000; color: #fff; border: none; border-radius: 50%; width: 50px; height: 50px; cursor: pointer; font-size: 1.2rem; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">➕</button>
 
     <script src="app.js"></script>
 </body>
