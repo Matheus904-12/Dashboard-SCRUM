@@ -436,7 +436,18 @@ const mockOrders = [
 
 // Start
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initSupabase);
+    document.addEventListener('DOMContentLoaded', () => {
+        initSupabase();
+        // Force large icon size
+        setTimeout(() => {
+            const icon = document.querySelector('#btn-open-admin svg');
+            if (icon) {
+                icon.setAttribute('width', '32');
+                icon.setAttribute('height', '32');
+                icon.setAttribute('stroke-width', '3');
+            }
+        }, 500);
+    });
 } else {
     initSupabase();
 }
