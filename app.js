@@ -6,19 +6,28 @@ let supabase = null;
 
 // Initialize Supabase and update status UI
 function initSupabase() {
+    console.log("Initializing Supabase...");
     const statusEl = document.getElementById('connection-status');
     
     if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+        if (!window.supabase) {
+            console.error("Supabase library NOT found on window object!");
+            statusEl.innerHTML = '<i data-lucide="database-zap"></i> Erro: Lib não carregada';
+            return;
+        }
+
         try {
             supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            console.log("Supabase Client Created Successfully");
             statusEl.innerHTML = '<i data-lucide="database"></i> Conectado ao PostgreSQL';
             statusEl.classList.remove('status-pending');
             statusEl.classList.add('status-success');
         } catch (e) {
-            statusEl.innerHTML = '<i data-lucide="database-zap"></i> Erro na Conexão';
+            statusEl.innerHTML = '<i data-lucide="database-zap"></i> Erro na Configuração';
             console.error("Supabase Init Error:", e);
         }
     } else {
+        console.warn("Supabase credentials missing. Running in Demo Mode.");
         statusEl.innerHTML = '<i data-lucide="database"></i> Modo Demo (Sem Banco)';
     }
     
@@ -235,7 +244,15 @@ document.getElementById('order-form').onsubmit = async (e) => {
 };
 
 // Init
-window.onload = () => {
+// Init logic
+function startApp() {
+    console.log("InovaMold App Starting...");
     initSupabase();
     loadOrder(mockOrders[0]);
-};
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', startApp);
+} else {
+    startApp();
+}
