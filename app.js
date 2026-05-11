@@ -1,6 +1,6 @@
 // InovaMold - Polimeros | Core Logic
-const SUPABASE_URL = ''; 
-const SUPABASE_ANON_KEY = '';
+const SUPABASE_URL = 'https://aueswagvyexetfxduuxh.supabase.co'; 
+const SUPABASE_ANON_KEY = 'sb_publishable_83pMDh35idUGKvI289pyhg_M7V-JPpm';
 
 let supabase = null;
 
