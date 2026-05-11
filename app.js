@@ -8,10 +8,11 @@ const state = {
         { id: 5, name: 'Dev Gamma', role: 'Dev' }
     ],
     demands: JSON.parse(localStorage.getItem('scrum_demands')) || [],
-    metrics: {
+    metrics: JSON.parse(localStorage.getItem('scrum_metrics')) || {
         sales: 45250.75,
         inventory: 88,
-        logistics: 142
+        logistics: 142,
+        simulation: true
     }
 };
 
@@ -86,7 +87,10 @@ function updateUI() {
                 <h4>${member.name}</h4>
                 <p>Membro do Time Scrum</p>
             </div>
-            <span class="badge badge-${member.role.toLowerCase()}">${member.role}</span>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span class="badge badge-${member.role.toLowerCase()}">${member.role}</span>
+                <button class="btn-icon btn-delete" onclick="deleteMember(${member.id})">🗑️</button>
+            </div>
         `;
         teamList.appendChild(div);
     });
@@ -94,23 +98,48 @@ function updateUI() {
     // Update Demand List
     const demandList = document.getElementById('demand-list');
     demandList.innerHTML = '';
-    state.demands.reverse().forEach(demand => {
+    [...state.demands].reverse().forEach(demand => {
         const div = document.createElement('div');
         div.className = 'item-card';
         div.innerHTML = `
             <div class="item-info">
-                <h4>${demand.title}</h4>
-                <p>Data: ${new Date(demand.id).toLocaleDateString('pt-BR')}</p>
+                <h4>${demand.title} ${demand.completed ? '✅' : ''}</h4>
+                <p>Prioridade: <span class="status-${demand.priority.toLowerCase()}">${demand.priority}</span></p>
             </div>
-            <span class="status-${demand.priority.toLowerCase()}">${demand.priority}</span>
+            <div class="item-actions">
+                <button class="btn-icon btn-complete" onclick="toggleDemand(${demand.id})">${demand.completed ? '↩️' : '✔️'}</button>
+                <button class="btn-icon btn-delete" onclick="deleteDemand(${demand.id})">🗑️</button>
+            </div>
         `;
         demandList.appendChild(div);
     });
 }
 
+// Actions
+window.deleteMember = (id) => {
+    state.team = state.team.filter(m => m.id !== id);
+    localStorage.setItem('scrum_team', JSON.stringify(state.team));
+    updateUI();
+};
+
+window.deleteDemand = (id) => {
+    state.demands = state.demands.filter(d => d.id !== id);
+    localStorage.setItem('scrum_demands', JSON.stringify(state.demands));
+    updateUI();
+};
+
+window.toggleDemand = (id) => {
+    const demand = state.demands.find(d => d.id === id);
+    if (demand) demand.completed = !demand.completed;
+    localStorage.setItem('scrum_demands', JSON.stringify(state.demands));
+    updateUI();
+};
+
 // Real-time Simulation
 function simulateRealTime() {
     setInterval(() => {
+        if (!state.metrics.simulation) return;
+
         // Randomly fluctuate sales
         state.metrics.sales += (Math.random() * 100);
         state.metrics.logistics += Math.random() > 0.7 ? 1 : 0;
@@ -150,10 +179,38 @@ document.getElementById('demand-form').addEventListener('submit', (e) => {
     const title = document.getElementById('demand-title').value;
     const priority = document.getElementById('demand-priority').value;
     
-    state.demands.push({ id: Date.now(), title, priority });
+    state.demands.push({ id: Date.now(), title, priority, completed: false });
     localStorage.setItem('scrum_demands', JSON.stringify(state.demands));
     updateUI();
     e.target.reset();
+});
+
+// Modal Logic
+const modal = document.getElementById('config-modal');
+const btnConfig = document.getElementById('btn-config');
+const btnClose = document.getElementById('close-modal');
+
+btnConfig.onclick = () => {
+    document.getElementById('input-sales').value = state.metrics.sales.toFixed(2);
+    document.getElementById('input-inventory').value = state.metrics.inventory;
+    document.getElementById('input-logistics').value = state.metrics.logistics;
+    document.getElementById('toggle-sim').checked = state.metrics.simulation;
+    modal.style.display = 'flex';
+};
+
+btnClose.onclick = () => modal.style.display = 'none';
+window.onclick = (e) => { if (e.target === modal) modal.style.display = 'none'; };
+
+document.getElementById('config-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    state.metrics.sales = parseFloat(document.getElementById('input-sales').value);
+    state.metrics.inventory = parseInt(document.getElementById('input-inventory').value);
+    state.metrics.logistics = parseInt(document.getElementById('input-logistics').value);
+    state.metrics.simulation = document.getElementById('toggle-sim').checked;
+    
+    localStorage.setItem('scrum_metrics', JSON.stringify(state.metrics));
+    updateUI();
+    modal.style.display = 'none';
 });
 
 // Init
