@@ -1,307 +1,379 @@
-// InovaMold Logistics Dashboard - Core Logic
-let supabaseClient = null;
-let allOrders = [];
-let currentOrder = null;
+// InovaMold ERP - Dashboard Logic v3.0
+const SUPABASE_URL = 'https://aueswagvyexetfxduuxh.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_83pMDh35idUGKvI289pyhg_M7V-JPpm';
 
-// Mock data for demo mode
-const mockOrders = [
-    { id: 1, numero_pedido: 'IM-2026-001', lote: 'POL-PVC-442', cliente: 'Indústria Plástica Sul', valor: 125400.00, prazo: '2026-05-20', etapa_atual_index: 3, data_entrada_etapa: new Date().toISOString() }
+const ETAPAS = [
+  { label: 'Comercial', icon: '🛒' },
+  { label: 'PCP', icon: '📋' },
+  { label: 'Início Produção', icon: '▶' },
+  { label: 'Fim Produção', icon: '✓' },
+  { label: 'Estoque', icon: '📦' },
+  { label: 'Separação', icon: '🚚' },
+  { label: 'Faturado', icon: '🧾' },
+  { label: 'Enviado', icon: '🚢' },
 ];
 
-async function initSupabase() {
-    const statusEl = document.getElementById('connection-status');
-    const url = 'https://aueswagvyexetfxduuxh.supabase.co';
-    const key = 'sb_publishable_83pMDh35idUGKvI289pyhg_M7V-JPpm';
+const STATUS_DOT = { green: '#22c55e', yellow: '#f59e0b', red: '#ef4444' };
 
-    if (url && key) {
-        try {
-            supabaseClient = supabase.createClient(url, key);
-            statusEl.innerHTML = '<i data-lucide="database"></i> Conectado ao PostgreSQL';
-            statusEl.className = 'status-badge status-active';
-            await refreshData();
-        } catch (e) {
-            console.error("Supabase Init Error:", e);
-        }
-    } else {
-        statusEl.innerHTML = '<i data-lucide="database"></i> Modo Demo (Sem Banco)';
-    }
-    if (typeof lucide !== 'undefined') lucide.createIcons();
+let db = null;
+let allOrders = [];
+let currentOrder = null;
+let activeTab = 'details';
+
+// --- Utils ---
+function fmt(v) { return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0); }
+function fmtDate(d) { if (!d) return '—'; return new Date(d + 'T12:00:00').toLocaleDateString('pt-BR'); }
+function daysIn(dateStr) { if (!dateStr) return 0; return Math.max(0, Math.floor((Date.now() - new Date(dateStr)) / 86400000)); }
+
+function showToast(msg, ok = true) {
+  Toastify({
+    text: msg,
+    duration: 3000,
+    gravity: 'top',
+    position: 'right',
+    backgroundColor: ok ? '#d4af37' : '#ef4444',
+    style: { color: ok ? '#0a0a0a' : '#fff', fontFamily: "'IBM Plex Mono', monospace", fontSize: '13px' }
+  }).showToast();
 }
 
-async function refreshData() {
-    if (supabaseClient) {
-        const { data, error } = await supabaseClient.from('pedidos').select('*').order('created_at', { ascending: false });
-        if (data) {
-            allOrders = data;
-            renderAdminTable();
-            renderQuickOrderList();
-            updateLogisticsSummary();
-            if (allOrders.length > 0 && !currentOrder) {
-                loadOrder(allOrders[0]);
-            }
-        }
-        if (error) console.error("Error fetching data:", error);
-    } else {
-        allOrders = mockOrders;
-        renderAdminTable();
-    }
+// --- Supabase Init ---
+async function init() {
+  try {
+    db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    await load();
+    document.getElementById('connection-badge').textContent = '● ONLINE';
+    document.getElementById('connection-badge').className = 'badge badge-ok';
+  } catch (err) {
+    console.error(err);
+    document.getElementById('connection-badge').textContent = '● OFFLINE';
+  }
 }
 
-function loadOrder(orderData) {
-    currentOrder = orderData;
-    document.getElementById('display-pedido-id').innerText = orderData.numero_pedido;
-    document.getElementById('display-lote-id').innerText = orderData.lote;
-    document.getElementById('card-cliente').innerText = orderData.cliente;
-    document.getElementById('card-valor').innerText = formatCurrency(orderData.valor);
-    document.getElementById('card-prazo').innerText = formatDate(orderData.prazo);
-    
-    const activeIdx = parseInt(orderData.etapa_atual_index);
-    updateTimeline(activeIdx);
-    
-    const daysInStage = calculateDays(orderData.data_entrada_etapa);
-    document.getElementById('etapa-label').innerText = getEtapaName(activeIdx);
-    document.getElementById('etapa-time').innerText = `${daysInStage} dias`;
-    
-    document.getElementById('chart-alert').style.display = daysInStage > 2 ? 'flex' : 'none';
-    if (daysInStage > 2) document.getElementById('delay-days').innerText = (daysInStage - 1).toFixed(1);
+// --- Load & Render Orders ---
+async function load() {
+  try {
+    const { data, error } = await db.from('pedidos').select('*').order('created_at', { ascending: false });
+    if (error) throw error;
+    allOrders = data || [];
+    renderSidebar(allOrders);
+    updateStats();
+    if (allOrders.length > 0 && !currentOrder) selectOrder(allOrders[0]);
+    else if (currentOrder) {
+      const refreshed = allOrders.find(o => o.id === currentOrder.id);
+      if (refreshed) selectOrder(refreshed);
+    }
+  } catch (err) {
+    console.error('Load error:', err);
+    document.getElementById('empty-state').textContent = 'Erro ao carregar dados.';
+  }
+}
 
-    updateChart(daysInStage);
-    loadInsumos(orderData.id);
-    if (typeof lucide !== 'undefined') lucide.createIcons();
+function renderSidebar(orders) {
+  const list = document.getElementById('order-list');
+  if (orders.length === 0) {
+    list.innerHTML = '<div style="padding:32px 16px; color:#444; font-size:12px; text-align:center;">Nenhum pedido encontrado</div>';
+    return;
+  }
+  list.innerHTML = orders.map(o => {
+    const isSelected = currentOrder && currentOrder.id === o.id;
+    const isDelayed = o.prazo && new Date(o.prazo) < new Date();
+    return `
+      <div class="order-row ${isSelected ? 'selected' : ''}" onclick="selectOrder(${JSON.stringify(o).replace(/"/g, '&quot;')})"
+           style="padding:12px 16px; border-bottom:1px solid #161616;">
+        <div style="font-size:12px; color:#d4af37; margin-bottom:3px; font-weight:500;">${o.numero_pedido}</div>
+        <div style="font-size:11px; color:#888; margin-bottom:6px; font-family:'IBM Plex Sans',sans-serif;">${o.cliente}</div>
+        <div style="display:flex; align-items:center; justify-content:space-between;">
+          <span class="badge badge-gold">Etapa ${o.etapa_atual_index}/8</span>
+          <span style="font-size:10px; color:${isDelayed ? '#ef4444' : '#444'};">${fmtDate(o.prazo)}</span>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function updateStats() {
+  document.getElementById('stat-total').textContent = allOrders.length;
+  document.getElementById('stat-faturado').textContent = allOrders.filter(o => o.etapa_atual_index === 7).length;
+  document.getElementById('stat-atrasado').textContent = allOrders.filter(o => o.prazo && new Date(o.prazo) < new Date()).length;
+}
+
+function filterOrders(term) {
+  const filtered = term.length < 2 ? allOrders : allOrders.filter(o =>
+    (o.numero_pedido || '').toLowerCase().includes(term.toLowerCase()) ||
+    (o.cliente || '').toLowerCase().includes(term.toLowerCase()) ||
+    (o.lote || '').toLowerCase().includes(term.toLowerCase())
+  );
+  renderSidebar(filtered);
+}
+
+// --- Select & Display Order ---
+function selectOrder(order) {
+  if (typeof order === 'string') order = JSON.parse(order);
+  currentOrder = order;
+
+  // Re-render sidebar to highlight selection
+  renderSidebar(allOrders.filter(o => {
+    const term = document.getElementById('search-input').value;
+    return !term || term.length < 2 ||
+      (o.numero_pedido || '').toLowerCase().includes(term.toLowerCase()) ||
+      (o.cliente || '').toLowerCase().includes(term.toLowerCase()) ||
+      (o.lote || '').toLowerCase().includes(term.toLowerCase());
+  }));
+
+  const o = order;
+  const activeStep = parseInt(o.etapa_atual_index) || 1;
+  const dias = daysIn(o.data_entrada_etapa);
+  const isDelayed = o.prazo && new Date(o.prazo) < new Date();
+
+  document.getElementById('empty-content').style.display = 'none';
+  document.getElementById('order-detail').style.display = 'block';
+
+  // Header
+  document.getElementById('detail-numero').textContent = o.numero_pedido;
+  document.getElementById('detail-sub').textContent = `${o.cliente} · Lote: ${o.lote || '—'}`;
+
+  // KPIs
+  document.getElementById('kpi-valor').textContent = fmt(o.valor);
+  const prazoEl = document.getElementById('kpi-prazo');
+  prazoEl.textContent = fmtDate(o.prazo);
+  prazoEl.style.color = isDelayed ? '#ef4444' : '#e8e4dc';
+  document.getElementById('kpi-etapa').textContent = ETAPAS[activeStep - 1]?.label || '—';
+  const diasEl = document.getElementById('kpi-dias');
+  diasEl.textContent = `${dias}d`;
+  diasEl.style.color = dias > 3 ? '#f59e0b' : '#e8e4dc';
+
+  // Timeline
+  const progress = ((activeStep - 1) / 7) * 100;
+  document.getElementById('timeline-progress').style.width = `${progress}%`;
+  const stepsEl = document.getElementById('steps-container');
+  stepsEl.innerHTML = ETAPAS.map((et, i) => {
+    const idx = i + 1;
+    const isDone = idx < activeStep;
+    const isActive = idx === activeStep;
+    const cls = isDone ? 'done' : (isActive ? 'active' : '');
+    return `
+      <div style="display:flex; flex-direction:column; align-items:center; gap:6px; min-width:64px;">
+        <div class="step-dot ${cls}">${isDone ? '✓' : `<span style="font-size:12px;">${et.icon}</span>`}</div>
+        <div style="font-size:9px; color:${isActive ? '#d4af37' : isDone ? '#555' : '#333'}; text-align:center; letter-spacing:0.3px; line-height:1.3;">
+          ${et.label.toUpperCase()}
+        </div>
+      </div>`;
+  }).join('');
+
+  // Delay alert
+  document.getElementById('delay-alert').style.display = dias > 2 ? 'block' : 'none';
+  document.getElementById('delay-days').textContent = dias;
+
+  // Detail tab fields
+  document.getElementById('d-numero').textContent = o.numero_pedido;
+  document.getElementById('d-lote').textContent = o.lote || '—';
+  document.getElementById('d-cliente').textContent = o.cliente;
+  document.getElementById('d-valor').textContent = fmt(o.valor);
+  document.getElementById('d-prazo').textContent = fmtDate(o.prazo);
+  const statusEl = document.getElementById('d-status');
+  statusEl.textContent = isDelayed ? 'ATRASADO' : 'NO PRAZO';
+  statusEl.style.color = isDelayed ? '#ef4444' : '#4ade80';
+  document.getElementById('d-etapa').textContent = `${activeStep} — ${ETAPAS[activeStep - 1]?.label}`;
+  document.getElementById('d-created').textContent = fmtDate(o.created_at);
+
+  // Logistics tab
+  document.getElementById('l-transp').textContent = o.transportadora || '—';
+  document.getElementById('l-rastreio').textContent = o.codigo_rastreio || '—';
+  renderReadyList();
+
+  // Load insumos
+  loadInsumos(o.id);
+
+  // ERP table
+  renderErpTable();
+
+  // Switch to current tab
+  switchTab(activeTab);
 }
 
 async function loadInsumos(pedidoId) {
-    const list = document.getElementById('insumos-list');
-    if (!list) return;
-    list.innerHTML = '<li>Carregando insumos...</li>';
-    
-    if (supabaseClient && pedidoId) {
-        const { data, error } = await supabaseClient.from('insumos').select('*').eq('pedido_id', pedidoId);
-        if (data && data.length > 0) {
-            list.innerHTML = '';
-            data.forEach(item => {
-                const li = document.createElement('li');
-                li.className = 'semaforo-item';
-                li.innerHTML = `
-                    <div class="semaforo-left">
-                        <div class="dot ${item.status}"></div>
-                        <div class="item-name">${item.nome_insumo}</div>
-                    </div>
-                    <div class="item-details">${item.detalhes || ''}</div>
-                `;
-                list.appendChild(li);
-            });
-        } else {
-            // Fallback UI
-            list.innerHTML = '';
-            const defaults = [
-                { name: 'Polímero PVC-S', status: 'green', details: 'Lote Verificado' },
-                { name: 'Aditivo Estabilizante', status: 'yellow', details: 'Reposição em 1 dia' },
-                { name: 'Pigmento Preto', status: 'green', details: 'Estoque OK' }
-            ];
-            defaults.forEach(item => {
-                const li = document.createElement('li');
-                li.className = 'semaforo-item';
-                li.innerHTML = `
-                    <div class="semaforo-left"><div class="dot ${item.status}"></div><div class="item-name">${item.name}</div></div>
-                    <div class="item-details">${item.details}</div>
-                `;
-                list.appendChild(li);
-            });
-        }
+  const listEl = document.getElementById('insumos-list');
+  listEl.innerHTML = '<div style="padding:24px; color:#444; font-size:12px; text-align:center;">Carregando...</div>';
+
+  try {
+    const { data } = await db.from('insumos').select('*').eq('pedido_id', pedidoId);
+    const items = (data && data.length > 0) ? data : [
+      { nome_insumo: 'Polímero PVC-S', status: 'green', detalhes: 'Lote Verificado' },
+      { nome_insumo: 'Aditivo Estabilizante', status: 'yellow', detalhes: 'Reposição em 1 dia' },
+      { nome_insumo: 'Pigmento Preto', status: 'green', detalhes: 'Estoque OK' },
+    ];
+
+    const hasCritical = items.some(i => i.status === 'red');
+    document.getElementById('insumos-alert').style.display = hasCritical ? 'block' : 'none';
+
+    listEl.innerHTML = items.map(ins => {
+      const badgeClass = ins.status === 'green' ? 'badge-ok' : ins.status === 'yellow' ? 'badge-warn' : 'badge-err';
+      const label = { green: 'OK', yellow: 'ATENÇÃO', red: 'CRÍTICO' }[ins.status] || ins.status;
+      return `
+        <div class="insumo-row">
+          <div style="width:10px; height:10px; border-radius:50%; background:${STATUS_DOT[ins.status] || '#888'}; flex-shrink:0;"></div>
+          <div style="flex:1;">
+            <div style="font-size:13px; color:#e8e4dc; font-family:'IBM Plex Sans',sans-serif;">${ins.nome_insumo}</div>
+            ${ins.detalhes ? `<div style="font-size:11px; color:#555; margin-top:2px;">${ins.detalhes}</div>` : ''}
+          </div>
+          <span class="badge ${badgeClass}">${label}</span>
+        </div>`;
+    }).join('');
+  } catch {
+    listEl.innerHTML = '<div style="padding:24px; color:#444; font-size:12px; text-align:center;">Erro ao carregar insumos</div>';
+  }
+}
+
+function renderReadyList() {
+  const ready = allOrders.filter(o => o.etapa_atual_index === 7);
+  const el = document.getElementById('ready-list');
+  if (ready.length === 0) {
+    el.innerHTML = '<div style="padding:16px; color:#444; font-size:12px; text-align:center; background:#111; border-radius:8px; border:1px solid #1e1e1e;">Nenhum pedido aguardando expedição</div>';
+    return;
+  }
+  el.innerHTML = ready.map(o => `
+    <div class="card" style="padding:12px 16px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; cursor:pointer;" onclick="selectOrder(${JSON.stringify(o).replace(/"/g, '&quot;')})">
+      <div>
+        <div style="font-size:12px; color:#d4af37; font-weight:500;">${o.numero_pedido}</div>
+        <div style="font-size:11px; color:#666; margin-top:2px; font-family:'IBM Plex Sans',sans-serif;">${o.cliente}</div>
+      </div>
+      <span class="badge badge-warn">FATURADO</span>
+    </div>`).join('');
+}
+
+function renderErpTable() {
+  const tbody = document.getElementById('erp-table-body');
+  tbody.innerHTML = allOrders.map(o => `
+    <tr style="border-bottom:1px solid #1a1a1a; transition:background 0.15s;" onmouseover="this.style.background='#161616'" onmouseout="this.style.background='transparent'">
+      <td style="padding:12px 16px; color:#d4af37; font-size:12px;">${o.numero_pedido}</td>
+      <td style="padding:12px 16px; color:#888; font-size:12px; font-family:'IBM Plex Sans',sans-serif;">${o.cliente}</td>
+      <td style="padding:12px 16px;"><span class="badge badge-gold">${ETAPAS[o.etapa_atual_index - 1]?.label || '—'}</span></td>
+      <td style="padding:12px 16px; text-align:center; display:flex; gap:6px; justify-content:center;">
+        <button style="background:#1a1a1a; border:1px solid #2a2a2a; color:#888; padding:5px 10px; border-radius:4px; font-size:11px; cursor:pointer; transition:all 0.15s;"
+          onmouseover="this.style.borderColor='#d4af37';this.style.color='#d4af37'" 
+          onmouseout="this.style.borderColor='#2a2a2a';this.style.color='#888'"
+          onclick="openEditById('${o.numero_pedido}')">editar</button>
+        <button style="background:#1a1a1a; border:1px solid #2a0f0f; color:#ef4444; padding:5px 10px; border-radius:4px; font-size:11px; cursor:pointer; transition:all 0.15s;"
+          onmouseover="this.style.background='#1a0a0a'" 
+          onmouseout="this.style.background='#1a1a1a'"
+          onclick="deleteById('${o.numero_pedido}')">excluir</button>
+      </td>
+    </tr>`).join('');
+}
+
+// --- Tab Switching ---
+function switchTab(tab) {
+  activeTab = tab;
+  ['details', 'insumos', 'logistica', 'erp'].forEach(t => {
+    const view = document.getElementById(`view-${t}`);
+    const btn = document.getElementById(`tab-${t}`);
+    if (view) view.style.display = t === tab ? 'block' : 'none';
+    if (btn) btn.className = t === tab ? 'tab-btn active' : 'tab-btn';
+  });
+}
+
+// --- CRUD ---
+function openModal() {
+  document.getElementById('f-id').value = '';
+  document.getElementById('f-numero').value = '';
+  document.getElementById('f-lote').value = '';
+  document.getElementById('f-cliente').value = '';
+  document.getElementById('f-valor').value = '';
+  document.getElementById('f-prazo').value = '';
+  document.getElementById('f-etapa').value = '1';
+  document.getElementById('f-transp').value = '';
+  document.getElementById('f-rastreio').value = '';
+  document.getElementById('modal-title').textContent = 'Novo Pedido';
+  document.getElementById('btn-modal-del').style.display = 'none';
+  document.getElementById('modal').style.display = 'flex';
+}
+
+function openEdit() {
+  if (!currentOrder) return;
+  openEditById(currentOrder.numero_pedido);
+}
+
+function openEditById(numeroPedido) {
+  const o = allOrders.find(x => x.numero_pedido === numeroPedido);
+  if (!o) return;
+  document.getElementById('f-id').value = o.id;
+  document.getElementById('f-numero').value = o.numero_pedido;
+  document.getElementById('f-lote').value = o.lote || '';
+  document.getElementById('f-cliente').value = o.cliente;
+  document.getElementById('f-valor').value = o.valor;
+  document.getElementById('f-prazo').value = o.prazo;
+  document.getElementById('f-etapa').value = o.etapa_atual_index;
+  document.getElementById('f-transp').value = o.transportadora || '';
+  document.getElementById('f-rastreio').value = o.codigo_rastreio || '';
+  document.getElementById('modal-title').textContent = 'Editar Pedido';
+  document.getElementById('btn-modal-del').style.display = 'block';
+  document.getElementById('modal').style.display = 'flex';
+}
+
+function closeModal() { document.getElementById('modal').style.display = 'none'; }
+
+async function saveOrder(e) {
+  e.preventDefault();
+  const id = document.getElementById('f-id').value;
+  const obj = {
+    numero_pedido: document.getElementById('f-numero').value,
+    lote: document.getElementById('f-lote').value,
+    cliente: document.getElementById('f-cliente').value,
+    valor: parseFloat(document.getElementById('f-valor').value),
+    prazo: document.getElementById('f-prazo').value,
+    etapa_atual_index: parseInt(document.getElementById('f-etapa').value),
+    transportadora: document.getElementById('f-transp').value || null,
+    codigo_rastreio: document.getElementById('f-rastreio').value || null,
+    data_entrada_etapa: new Date().toISOString(),
+  };
+
+  try {
+    if (id) {
+      const { error } = await db.from('pedidos').update(obj).eq('id', id);
+      if (error) throw error;
+    } else {
+      const { data, error } = await db.from('pedidos').insert(obj).select();
+      if (error) throw error;
+      if (data && data[0]) {
+        await db.from('insumos').insert([
+          { pedido_id: data[0].id, nome_insumo: 'Matéria Prima (Polímero)', status: 'green', detalhes: 'Lote Verificado' },
+          { pedido_id: data[0].id, nome_insumo: 'Pigmentação', status: 'green', detalhes: 'Estoque OK' },
+          { pedido_id: data[0].id, nome_insumo: 'Embalagem', status: 'yellow', detalhes: 'Aguardando lote' },
+        ]);
+      }
     }
-}
-
-function renderQuickOrderList() {
-    const list = document.getElementById('quick-order-list');
-    if (!list) return;
-    list.innerHTML = '';
-    allOrders.slice(0, 5).forEach(o => {
-        const span = document.createElement('span');
-        span.className = `order-tag ${currentOrder && currentOrder.id === o.id ? 'active' : ''}`;
-        span.innerText = o.numero_pedido;
-        span.onclick = () => loadOrder(o);
-        list.appendChild(span);
-    });
-}
-
-function renderAdminTable() {
-    const tbody = document.getElementById('dashboard-table-body');
-    if (!tbody) return;
-    tbody.innerHTML = '';
-    
-    allOrders.forEach(o => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td><b>${o.numero_pedido}</b></td>
-            <td>${o.cliente}</td>
-            <td style="text-align: center; display: flex; gap: 0.5rem; justify-content: center;">
-                <button class="action-btn-icon edit" onclick="openEditMode('${o.numero_pedido}')">
-                    <i data-lucide="edit-3" style="width: 16px; height: 16px;"></i>
-                </button>
-                <button class="action-btn-icon delete" onclick="deleteOrder('${o.numero_pedido}')">
-                    <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i>
-                </button>
-            </td>
-        `;
-        tbody.appendChild(tr);
-    });
-    if (typeof lucide !== 'undefined') lucide.createIcons();
-}
-
-window.openEditMode = (numeroPedido) => {
-    const order = allOrders.find(o => o.numero_pedido === numeroPedido);
-    if (!order) return;
-    document.getElementById('order-id').value = order.id || '';
-    document.getElementById('in-numero').value = order.numero_pedido;
-    document.getElementById('in-lote').value = order.lote;
-    document.getElementById('in-cliente').value = order.cliente;
-    document.getElementById('in-valor').value = order.valor;
-    document.getElementById('in-prazo').value = order.prazo;
-    document.getElementById('in-etapa').value = order.etapa_atual_index;
-    document.getElementById('in-transp').value = order.transportadora || '';
-    document.getElementById('in-rastreio').value = order.codigo_rastreio || '';
-    document.getElementById('btn-delete').style.display = 'block';
-    openModal();
-};
-
-async function deleteOrder(numeroPedido) {
-    if (!confirm(`Excluir o pedido ${numeroPedido}?`)) return;
-    if (supabaseClient) {
-        const { error } = await supabaseClient.from('pedidos').delete().eq('numero_pedido', numeroPedido);
-        if (!error) {
-            showToast("Excluído com sucesso", "success");
-            refreshData();
-        }
-    }
-}
-
-document.getElementById('order-form').onsubmit = async (e) => {
-    e.preventDefault();
-    const id = document.getElementById('order-id').value;
-    const orderObj = {
-        numero_pedido: document.getElementById('in-numero').value,
-        lote: document.getElementById('in-lote').value,
-        cliente: document.getElementById('in-cliente').value,
-        valor: parseFloat(document.getElementById('in-valor').value),
-        prazo: document.getElementById('in-prazo').value,
-        etapa_atual_index: parseInt(document.getElementById('in-etapa').value),
-        transportadora: document.getElementById('in-transp').value,
-        codigo_rastreio: document.getElementById('in-rastreio').value,
-        data_entrada_etapa: new Date().toISOString()
-    };
-
-    if (supabaseClient) {
-        const { data, error } = await supabaseClient.from('pedidos').upsert(orderObj, { onConflict: 'numero_pedido' }).select();
-        if (!error) {
-            showToast("Salvo com sucesso!", "success");
-            await refreshData();
-            const newOrder = data[0];
-            if (newOrder && !id) {
-                await supabaseClient.from('insumos').insert([
-                    { pedido_id: newOrder.id, nome_insumo: 'Matéria Prima (Polímero)', status: 'green' },
-                    { pedido_id: newOrder.id, nome_insumo: 'Pigmentação', status: 'green' },
-                    { pedido_id: newOrder.id, nome_insumo: 'Embalagem', status: 'yellow', detalhes: 'Aguardando lote' }
-                ]);
-            }
-            if (newOrder) loadOrder(newOrder);
-            closeModal();
-        } else {
-            showToast("Erro ao salvar.", "error");
-        }
-    }
-};
-
-function openModal() { document.getElementById('admin-modal').style.display = 'flex'; }
-function closeModal() { document.getElementById('admin-modal').style.display = 'none'; }
-document.getElementById('btn-delete').onclick = () => {
-    const num = document.getElementById('in-numero').value;
-    deleteOrder(num);
+    showToast('Pedido salvo com sucesso!');
     closeModal();
-};
-
-document.getElementById('search-order').addEventListener('input', (e) => {
-    const term = e.target.value.toLowerCase();
-    if (term.length < 2) return;
-    const found = allOrders.find(o => o.numero_pedido.toLowerCase().includes(term) || o.cliente.toLowerCase().includes(term));
-    if (found) loadOrder(found);
-});
-
-function updateChart(currentDays) {
-    const canvas = document.getElementById('stageChart');
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (window.myChart) window.myChart.destroy();
-    window.myChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: ['Média InovaMold', 'Este Pedido'],
-            datasets: [{
-                data: [1.5, currentDays],
-                backgroundColor: ['#1a1a1a', currentDays > 2 ? '#dc3545' : '#000'],
-                borderRadius: 4
-            }]
-        },
-        options: { indexAxis: 'y', responsive: true, plugins: { legend: { display: false } }, scales: { x: { display: false, min: 0 }, y: { grid: { display: false } } } }
-    });
+    await load();
+  } catch (err) {
+    console.error(err);
+    showToast('Erro ao salvar pedido.', false);
+  }
 }
 
-function updateLogisticsSummary() {
-    const readyCount = document.getElementById('ready-count');
-    if (!readyCount) return;
-    const ready = allOrders.filter(o => o.etapa_atual_index === 7);
-    readyCount.innerText = ready.length;
-    const list = document.getElementById('ready-orders-list');
-    list.innerHTML = '';
-    ready.forEach(o => {
-        const div = document.createElement('div');
-        div.className = 'pedido-mini-card';
-        div.style.cursor = 'pointer';
-        div.onclick = () => loadOrder(o);
-        div.innerHTML = `<div><div class="id">${o.numero_pedido}</div><div class="client">${o.cliente}</div></div> <i data-lucide="arrow-right"></i>`;
-        list.appendChild(div);
-    });
-    if (typeof lucide !== 'undefined') lucide.createIcons();
+async function deleteById(numeroPedido) {
+  if (!confirm(`Excluir o pedido ${numeroPedido}?`)) return;
+  try {
+    const { error } = await db.from('pedidos').delete().eq('numero_pedido', numeroPedido);
+    if (error) throw error;
+    if (currentOrder && currentOrder.numero_pedido === numeroPedido) currentOrder = null;
+    showToast('Pedido excluído.');
+    await load();
+  } catch (err) {
+    showToast('Erro ao excluir.', false);
+  }
 }
 
-function updateTimeline(activeIdx) {
-    const progress = document.getElementById('timeline-progress');
-    const steps = document.querySelectorAll('.step');
-    const percentage = ((activeIdx - 1) / (steps.length - 1)) * 100;
-    progress.style.width = `${percentage}%`;
-    steps.forEach(step => {
-        const stepNum = parseInt(step.getAttribute('data-step'));
-        step.classList.remove('active', 'completed');
-        if (stepNum < activeIdx) step.classList.add('completed');
-        if (stepNum === activeIdx) step.classList.add('active');
-    });
+function deleteCurrentOrder() {
+  if (!currentOrder) return;
+  deleteById(currentOrder.numero_pedido);
 }
 
-// Helpers
-function formatCurrency(v) { return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v); }
-function formatDate(d) { return new Date(d).toLocaleDateString('pt-BR'); }
-function calculateDays(dateStr) {
-    if (!dateStr) return 0;
-    const diff = new Date() - new Date(dateStr);
-    return Math.max(0, (diff / (1000 * 60 * 60 * 24)).toFixed(1));
-}
-function getEtapaName(idx) {
-    const names = ["", "Comercial", "PCP", "Início Produção", "Fim Produção", "Estoque", "Separação", "Faturado", "Enviado"];
-    return names[idx] || "-";
-}
-function showToast(msg, type) {
-    Toastify({ text: msg, duration: 3000, gravity: "top", position: "right", backgroundColor: type === "success" ? "#2ecc71" : "#e74c3c" }).showToast();
+function deleteFromModal() {
+  const num = document.getElementById('f-numero').value;
+  if (!num) return;
+  closeModal();
+  deleteById(num);
 }
 
-// Start
-document.addEventListener('DOMContentLoaded', () => {
-    initSupabase();
-    setTimeout(() => {
-        const icon = document.querySelector('#btn-open-admin svg');
-        if (icon) {
-            icon.setAttribute('width', '32');
-            icon.setAttribute('height', '32');
-            icon.setAttribute('stroke-width', '3');
-        }
-    }, 1000);
-});
+// --- Start ---
+document.addEventListener('DOMContentLoaded', init);
