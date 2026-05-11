@@ -129,9 +129,10 @@ function filterOrders(term) {
 }
 
 // --- Select & Display Order ---
-function selectOrder(order) {
-  if (typeof order === 'string') order = JSON.parse(order);
-  currentOrder = order;
+function selectOrder(o) {
+  window._currentSelectedOrder = o; // cache for cycleInsumoStatus
+  if (typeof o === 'string') o = JSON.parse(o);
+  currentOrder = o;
 
   // Re-render sidebar to highlight selection
   renderSidebar(allOrders.filter(o => {
@@ -246,21 +247,47 @@ async function loadInsumos(pedidoId) {
 
     listEl.innerHTML = rowHtml;
 
-    // Also update bottom grid semáforo
+    // Also update bottom grid semáforo (clickable status cycling)
     const d2list = document.getElementById('insumos-list-d2');
     const d2alert = document.getElementById('insumos-alert-d2');
     if (d2list) {
-      d2list.innerHTML = items.map(ins => `
-        <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
-          <div style="width:10px;height:10px;border-radius:50%;background:${STATUS_DOT[ins.status]||'#888'};flex-shrink:0;"></div>
-          <div style="flex:1;font-size:12px;color:var(--text);font-family:'IBM Plex Sans',sans-serif;">${ins.nome_insumo}</div>
-          <div style="font-size:11px;color:var(--text-muted);">${ins.detalhes||''}</div>
-        </div>`).join('');
+      window._d2Insumos = items; // cache for cycling
+      d2list.innerHTML = items.map((ins, idx) => {
+        const col = { green: '#4ade80', yellow: '#f59e0b', red: '#ef4444' }[ins.status] || '#888';
+        const lbl = { green: 'OK', yellow: 'ATENÇÃO', red: 'CRÍTICO' }[ins.status] || ins.status;
+        return `<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);cursor:pointer;" onclick="cycleInsumoStatus(${idx})" title="Clique para alterar status">
+          <div style="width:10px;height:10px;border-radius:50%;background:${col};flex-shrink:0;transition:transform 0.15s;" onmouseover="this.style.transform='scale(1.5)'" onmouseout="this.style.transform='scale(1)'"></div>
+          <div style="flex:1;">
+            <div style="font-size:12px;color:var(--text);font-family:'IBM Plex Sans',sans-serif;">${ins.nome_insumo}</div>
+            <div style="font-size:10px;color:var(--text-muted);">${ins.detalhes || ''}</div>
+          </div>
+          <span style="font-size:10px;padding:2px 8px;border-radius:99px;background:${col}22;color:${col};border:1px solid ${col}44;font-weight:600;">${lbl}</span>
+        </div>`;
+      }).join('');
     }
     if (d2alert) d2alert.style.display = hasCritical ? 'block' : 'none';
   } catch {
     listEl.innerHTML = '<div style="padding:24px; color:#444; font-size:12px; text-align:center;">Erro ao carregar insumos</div>';
   }
+}
+
+async function cycleInsumoStatus(idx) {
+  const items = window._d2Insumos;
+  if (!items || !items[idx]) return;
+  const cycle = { green: 'yellow', yellow: 'red', red: 'green' };
+  const label = { green: 'OK', yellow: 'ATENÇÃO', red: 'CRÍTICO' };
+  const item = items[idx];
+  const next = cycle[item.status] || 'green';
+  items[idx] = { ...item, status: next };
+  window._d2Insumos = items;
+  // Re-call loadInsumos render path
+  const currentOrder = window._currentSelectedOrder;
+  if (currentOrder) loadInsumos(currentOrder.id);
+  // Persist to DB if real item
+  if (item.id) {
+    await db.from('insumos').update({ status: next }).eq('id', item.id);
+  }
+  showToast(`${item.nome_insumo}: ${label[next]}`, 'ok');
 }
 
 // ── BOTTOM GRID FUNCTIONS ────────────────────────────────────

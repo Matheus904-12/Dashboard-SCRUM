@@ -115,41 +115,70 @@ async function loadOrder(orderData) {
 }
 
 // Semáforo de Polímeros & Insumos
+const STATUS_COLORS = { green: '#28a745', yellow: '#ffc107', red: '#dc3545' };
+const STATUS_CYCLE = { green: 'yellow', yellow: 'red', red: 'green' };
+const STATUS_LABEL = { green: 'OK', yellow: 'Atenção', red: 'Crítico' };
+let _insumoItems = []; // cached for cycling
+let _currentPedidoId = null;
+
 async function loadInsumos(pedidoId) {
+    _currentPedidoId = pedidoId;
     const list = document.getElementById('insumos-list');
     const alertEl = document.getElementById('insumo-alert');
     if (!list) return;
-    list.innerHTML = '<li style="color:#aaa; font-size:0.85rem; padding:1rem 0;">Carregando insumos...</li>';
+    list.innerHTML = '<li style="color:#aaa;font-size:0.85rem;padding:1rem 0;">Carregando insumos...</li>';
 
     let items = [];
     if (supabaseClient && pedidoId) {
         const { data } = await supabaseClient.from('insumos').select('*').eq('pedido_id', pedidoId);
         if (data && data.length > 0) items = data;
     }
-
-    // Fallback if no insumos registered
     if (items.length === 0) {
         items = [
-            { nome_insumo: 'Polímero PVC-S', status: 'green', detalhes: 'Lote Verificado' },
-            { nome_insumo: 'Aditivo Estabilizante', status: 'yellow', detalhes: 'Reposição em 1 dia' },
-            { nome_insumo: 'Pigmento Preto', status: 'green', detalhes: 'Estoque OK' },
+            { id: null, nome_insumo: 'Polímero PVC-S', status: 'green', detalhes: 'Lote Verificado' },
+            { id: null, nome_insumo: 'Aditivo Estabilizante', status: 'yellow', detalhes: 'Reposição em 1 dia' },
+            { id: null, nome_insumo: 'Pigmento Preto', status: 'green', detalhes: 'Estoque OK' },
         ];
     }
+    _insumoItems = items;
+    renderInsumos();
+}
 
-    const hasCritical = items.some(i => i.status === 'red');
+function renderInsumos() {
+    const list = document.getElementById('insumos-list');
+    const alertEl = document.getElementById('insumo-alert');
+    if (!list) return;
+
+    const hasCritical = _insumoItems.some(i => i.status === 'red');
     if (alertEl) alertEl.style.display = hasCritical ? 'flex' : 'none';
 
-    list.innerHTML = items.map(ins => `
-        <li class="semaforo-item">
+    list.innerHTML = _insumoItems.map((ins, idx) => `
+        <li class="semaforo-item" style="cursor:pointer;" onclick="cycleStatus(${idx})" title="Clique para alterar status">
             <div class="semaforo-left">
-                <div class="dot ${ins.status}"></div>
-                <div class="item-name">${ins.nome_insumo}</div>
+                <div class="dot ${ins.status}" style="cursor:pointer; transition:transform 0.15s;" onmouseover="this.style.transform='scale(1.4)'" onmouseout="this.style.transform='scale(1)'"></div>
+                <div>
+                    <div class="item-name">${ins.nome_insumo}</div>
+                    <div class="item-details" style="font-size:0.7rem; margin-top:1px;">${ins.detalhes || ''}</div>
+                </div>
             </div>
-            <div class="item-details">${ins.detalhes || ''}</div>
+            <span style="font-size:0.7rem; font-weight:600; padding:2px 8px; border-radius:99px; background:${STATUS_COLORS[ins.status]}22; color:${STATUS_COLORS[ins.status]}; border:1px solid ${STATUS_COLORS[ins.status]}44;">
+                ${STATUS_LABEL[ins.status]}
+            </span>
         </li>
     `).join('');
+}
 
-    if (typeof lucide !== 'undefined') lucide.createIcons();
+async function cycleStatus(idx) {
+    const item = _insumoItems[idx];
+    if (!item) return;
+    const next = STATUS_CYCLE[item.status] || 'green';
+    _insumoItems[idx] = { ...item, status: next };
+    renderInsumos();
+    // Persist if real DB item
+    if (supabaseClient && item.id) {
+        await supabaseClient.from('insumos').update({ status: next }).eq('id', item.id);
+    }
+    showToast(`${item.nome_insumo}: ${STATUS_LABEL[next]}`, 'success');
 }
 
 // Admin Logic (CRUD)
@@ -336,12 +365,28 @@ function updateLogisticsSummary() {
     document.getElementById('ready-count').innerText = ready.length;
     const list = document.getElementById('ready-orders-list');
     list.innerHTML = '';
-    ready.forEach(o => {
+
+    // If no orders at etapa 7, show last 3 recent orders as reference
+    const displayList = ready.length > 0 ? ready : allOrders.slice(0, 3);
+    const isAll = ready.length === 0;
+
+    displayList.forEach(o => {
         const div = document.createElement('div');
         div.className = 'pedido-mini-card';
-        div.innerHTML = `<div><div class="id">${o.numero_pedido}</div><div class="client">${o.cliente}</div></div> <i data-lucide="arrow-right"></i>`;
+        div.style.cursor = 'pointer';
+        div.onclick = () => loadOrder(o);
+        div.innerHTML = `
+            <div>
+                <div class="id">${o.numero_pedido}</div>
+                <div class="client">${o.cliente} · ${getEtapaName(o.etapa_atual_index)}</div>
+            </div>
+            <span style="font-size:0.7rem;padding:2px 8px;border-radius:99px;background:${isAll?'#f1f5f9':'#e8f5e9'};color:${isAll?'#64748b':'#2e7d32'};font-weight:600;">${isAll?'ATIVO':'PRONTO'}</span>`;
         list.appendChild(div);
     });
+
+    if (displayList.length === 0) {
+        list.innerHTML = '<p style="font-size:0.8rem;color:#aaa;">Nenhum pedido cadastrado</p>';
+    }
 }
 
 function calculateDays(dateStr) {
