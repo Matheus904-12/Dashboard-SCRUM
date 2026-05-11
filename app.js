@@ -50,6 +50,10 @@ async function refreshData() {
                 loadOrder(allOrders[0]);
             }
         }
+        if (error) {
+            console.error("Error fetching data:", error);
+            showToast("Erro ao carregar dados do banco.", "error");
+        }
     } else {
         // Fallback to mock data if no supabase
         allOrders = mockOrders;
