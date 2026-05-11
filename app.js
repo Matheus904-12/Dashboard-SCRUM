@@ -21,7 +21,13 @@ function initSupabase() {
     } else {
         statusEl.innerHTML = '<i data-lucide="database"></i> Modo Demo (Sem Banco)';
     }
-    lucide.createIcons();
+    
+    // Safety check for Lucide
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+    } else {
+        console.warn("Lucide library not loaded yet.");
+    }
 }
 
 // Global State
@@ -113,7 +119,10 @@ async function loadOrder(orderData) {
     }
 
     updateChart(daysInStage);
-    lucide.createIcons(); // Refresh icons for dynamic content
+    
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons(); 
+    }
 }
 
 function renderInsumos(insumos) {
