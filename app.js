@@ -2,6 +2,29 @@
 const SUPABASE_URL = 'https://aueswagvyexetfxduuxh.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_83pMDh35idUGKvI289pyhg_M7V-JPpm';
 
+// ── THEME SWITCHER ──────────────────────────────────
+function toggleTheme() {
+  const html = document.documentElement;
+  const isDark = html.getAttribute('data-theme') !== 'light';
+  const next = isDark ? 'light' : 'dark';
+  html.setAttribute('data-theme', next);
+  localStorage.setItem('inovamold-theme', next);
+  document.getElementById('theme-icon').textContent = next === 'dark' ? '☀' : '🌙';
+  document.getElementById('theme-label').textContent = next === 'dark' ? 'DESIGN 1' : 'DESIGN 2';
+}
+
+// Apply saved theme immediately
+(function() {
+  const saved = localStorage.getItem('inovamold-theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', saved);
+  // Labels update after DOM loads
+  document.addEventListener('DOMContentLoaded', () => {
+    const theme = document.documentElement.getAttribute('data-theme');
+    document.getElementById('theme-icon').textContent = theme === 'dark' ? '☀' : '🌙';
+    document.getElementById('theme-label').textContent = theme === 'dark' ? 'DESIGN 1' : 'DESIGN 2';
+  });
+})();
+
 const ETAPAS = [
   { label: 'Comercial',      icon: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>` },
   { label: 'PCP',            icon: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>` },
