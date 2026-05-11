@@ -3,6 +3,8 @@ const SUPABASE_URL = 'https://aueswagvyexetfxduuxh.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_83pMDh35idUGKvI289pyhg_M7V-JPpm';
 
 let supabaseClient = null;
+let currentOrder = null;
+let allOrders = [];
 
 // Initialize Supabase and update status UI
 function initSupabase() {
@@ -22,6 +24,7 @@ function initSupabase() {
             statusEl.innerHTML = '<i data-lucide="database"></i> Conectado ao PostgreSQL';
             statusEl.classList.remove('status-pending');
             statusEl.classList.add('status-success');
+            refreshData();
         } catch (e) {
             statusEl.innerHTML = '<i data-lucide="database-zap"></i> Erro na Configuração';
             console.error("Supabase Init Error:", e);
@@ -31,52 +34,39 @@ function initSupabase() {
         statusEl.innerHTML = '<i data-lucide="database"></i> Modo Demo (Sem Banco)';
     }
     
-    // Safety check for Lucide
-    if (typeof lucide !== 'undefined') {
-        lucide.createIcons();
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+// Fetch all orders for the dashboard
+async function refreshData() {
+    if (supabaseClient) {
+        const { data, error } = await supabaseClient.from('pedidos').select('*').order('created_at', { ascending: false });
+        if (data) {
+            allOrders = data;
+            renderAdminTable();
+            updateRiskTable();
+            updateLogisticsSummary();
+            if (allOrders.length > 0 && !currentOrder) {
+                loadOrder(allOrders[0]);
+            }
+        }
     } else {
-        console.warn("Lucide library not loaded yet.");
+        // Fallback to mock data if no supabase
+        allOrders = mockOrders;
+        renderAdminTable();
     }
 }
 
-// Global State
-let currentOrder = null;
-
-// Mock Data for Demo (InovaMold Specific)
-const mockOrders = [
-    {
-        id: 1,
-        numero_pedido: 'IM-2026-001',
-        lote: 'POL-PVC-442',
-        cliente: 'Indústria Plástica Sul',
-        valor: 125400.00,
-        prazo: '2026-05-20',
-        status: 'No Prazo',
-        etapa_atual_index: 3, // Início Produção
-        data_entrada_etapa: '2026-05-08',
-        transportadora: null,
-        codigo_rastreio: null,
-        insumos: [
-            { nome: 'Polímero PVC-S', status: 'green' },
-            { nome: 'Aditivo Estabilizante', status: 'yellow', extra: 'Reposição em 1 dia' },
-            { nome: 'Pigmento Preto', status: 'green' }
-        ]
-    }
-];
-
-// UI Update Logic
+// UI Update Logic for Main Dashboard
 async function loadOrder(orderData) {
     currentOrder = orderData;
     
-    // Header
     document.getElementById('display-pedido-id').innerText = orderData.numero_pedido;
     document.getElementById('display-lote-id').innerText = orderData.lote;
-    
-    // Cards
     document.getElementById('card-cliente').innerText = orderData.cliente;
     document.getElementById('card-valor').innerText = `R$ ${orderData.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
     document.getElementById('card-prazo').innerText = new Date(orderData.prazo).toLocaleDateString('pt-BR');
-    document.getElementById('card-status').innerText = orderData.status;
+    document.getElementById('card-status').innerText = orderData.status || (isDelayed(orderData.data_entrada_etapa) ? 'Em Atraso' : 'No Prazo');
 
     // Timeline
     const steps = document.querySelectorAll('.step');
@@ -86,16 +76,15 @@ async function loadOrder(orderData) {
     steps.forEach((step, idx) => {
         const stepIdx = idx + 1;
         step.classList.remove('active');
-        step.style.color = 'var(--text-secondary)';
+        const circle = step.querySelector('.step-circle');
+        circle.style.backgroundColor = '';
+        circle.style.borderColor = '';
         
         if (stepIdx <= activeIdx) {
             step.classList.add('active');
             if (stepIdx === activeIdx && isDelayed(orderData.data_entrada_etapa)) {
-                step.querySelector('.step-circle').style.backgroundColor = '#dc3545';
-                step.querySelector('.step-circle').style.borderColor = '#dc3545';
-            } else {
-                step.querySelector('.step-circle').style.backgroundColor = '';
-                step.querySelector('.step-circle').style.borderColor = '';
+                circle.style.backgroundColor = '#dc3545';
+                circle.style.borderColor = '#dc3545';
             }
         }
     });
@@ -108,15 +97,8 @@ async function loadOrder(orderData) {
     document.getElementById('etapa-label').innerText = getEtapaName(activeIdx);
     document.getElementById('etapa-time').innerText = `${daysInStage} dias`;
     
-    if (daysInStage > 2) {
-        document.getElementById('chart-alert').style.display = 'flex';
-        document.getElementById('delay-days').innerText = (daysInStage - 1).toFixed(1);
-    } else {
-        document.getElementById('chart-alert').style.display = 'none';
-    }
-
-    // Insumos
-    renderInsumos(orderData.insumos || []);
+    document.getElementById('chart-alert').style.display = daysInStage > 2 ? 'flex' : 'none';
+    if (daysInStage > 2) document.getElementById('delay-days').innerText = (daysInStage - 1).toFixed(1);
 
     // Logistics
     if (activeIdx >= 7 && orderData.transportadora) {
@@ -128,34 +110,137 @@ async function loadOrder(orderData) {
     }
 
     updateChart(daysInStage);
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+// Admin Logic (CRUD)
+function renderAdminTable() {
+    const tbody = document.getElementById('admin-table-body');
+    tbody.innerHTML = '';
     
-    if (typeof lucide !== 'undefined') {
-        lucide.createIcons(); 
+    allOrders.forEach(o => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><b>${o.numero_pedido}</b></td>
+            <td>${o.cliente}</td>
+            <td><span style="font-size: 0.7rem;">${getEtapaName(o.etapa_atual_index)}</span></td>
+            <td>
+                <button class="action-btn edit-btn" onclick="openEditMode('${o.numero_pedido}')">Editar</button>
+                <button class="action-btn delete-btn" onclick="deleteOrder('${o.numero_pedido}')">Excluir</button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+window.openEditMode = (numeroPedido) => {
+    const order = allOrders.find(o => o.numero_pedido === numeroPedido);
+    if (!order) return;
+
+    document.getElementById('order-id').value = order.id || '';
+    document.getElementById('in-numero').value = order.numero_pedido;
+    document.getElementById('in-lote').value = order.lote;
+    document.getElementById('in-cliente').value = order.cliente;
+    document.getElementById('in-valor').value = order.valor;
+    document.getElementById('in-prazo').value = order.prazo;
+    document.getElementById('in-etapa').value = order.etapa_atual_index;
+    document.getElementById('in-transp').value = order.transportadora || '';
+    document.getElementById('in-rastreio').value = order.codigo_rastreio || '';
+    
+    document.getElementById('btn-delete').style.display = 'block';
+    switchTab('form');
+};
+
+async function deleteOrder(numeroPedido) {
+    if (!confirm(`Tem certeza que deseja excluir o pedido ${numeroPedido}?`)) return;
+
+    if (supabaseClient) {
+        const { error } = await supabaseClient.from('pedidos').delete().eq('numero_pedido', numeroPedido);
+        if (!error) {
+            showToast("Pedido excluído com sucesso!", "success");
+            refreshData();
+        } else {
+            showToast("Erro ao excluir pedido.", "error");
+        }
+    } else {
+        allOrders = allOrders.filter(o => o.numero_pedido !== numeroPedido);
+        renderAdminTable();
+        showToast("Modo Demo: Pedido removido da lista local.", "info");
     }
 }
 
-function renderInsumos(insumos) {
-    const list = document.getElementById('insumos-list');
-    list.innerHTML = '';
-    let hasCritical = false;
-    
-    insumos.forEach(item => {
-        if (item.status === 'red') hasCritical = true;
-        const li = document.createElement('li');
-        li.className = 'semaforo-item';
-        li.innerHTML = `
-            <div class="semaforo-left">
-                <div class="dot ${item.status}"></div>
-                <span class="item-name">${item.nome}</span>
-            </div>
-            ${item.extra ? `<span class="item-details">${item.extra}</span>` : ''}
-        `;
-        list.appendChild(li);
-    });
-    
-    document.getElementById('insumo-alert').style.display = hasCritical ? 'flex' : 'none';
+document.getElementById('order-form').onsubmit = async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('order-id').value;
+    const orderObj = {
+        numero_pedido: document.getElementById('in-numero').value,
+        lote: document.getElementById('in-lote').value,
+        cliente: document.getElementById('in-cliente').value,
+        valor: parseFloat(document.getElementById('in-valor').value),
+        prazo: document.getElementById('in-prazo').value,
+        etapa_atual_index: parseInt(document.getElementById('in-etapa').value),
+        transportadora: document.getElementById('in-transp').value,
+        codigo_rastreio: document.getElementById('in-rastreio').value,
+        data_entrada_etapa: new Date().toISOString()
+    };
+
+    if (supabaseClient) {
+        const { error } = await supabaseClient.from('pedidos').upsert(orderObj, { onConflict: 'numero_pedido' });
+        if (!error) {
+            showToast("Pedido salvo com sucesso!", "success");
+            refreshData();
+            closeModal();
+        } else {
+            showToast("Erro ao salvar no banco.", "error");
+            console.error(error);
+        }
+    } else {
+        showToast("Modo Demo: Pedido salvo localmente.", "info");
+        closeModal();
+    }
+};
+
+// Tabs
+const tabList = document.getElementById('tab-list');
+const tabForm = document.getElementById('tab-form');
+const viewList = document.getElementById('view-list');
+const viewForm = document.getElementById('view-form');
+
+function switchTab(tab) {
+    if (tab === 'list') {
+        tabList.classList.add('active');
+        tabForm.classList.remove('active');
+        viewList.style.display = 'block';
+        viewForm.style.display = 'none';
+        document.getElementById('btn-delete').style.display = 'none';
+    } else {
+        tabList.classList.remove('active');
+        tabForm.classList.add('active');
+        viewList.style.display = 'none';
+        viewForm.style.display = 'block';
+    }
 }
 
+tabList.onclick = () => switchTab('list');
+tabForm.onclick = () => {
+    document.getElementById('order-form').reset();
+    document.getElementById('order-id').value = '';
+    switchTab('form');
+};
+
+// Search
+document.getElementById('search-order').addEventListener('input', (e) => {
+    const term = e.target.value.toLowerCase();
+    if (term.length < 2) return;
+    const found = allOrders.find(o => 
+        o.numero_pedido.toLowerCase().includes(term) || 
+        o.cliente.toLowerCase().includes(term) || 
+        o.lote.toLowerCase().includes(term)
+    );
+    if (found) loadOrder(found);
+});
+
+// Chart & Logic Helpers
 function updateChart(currentDays) {
     const ctx = document.getElementById('stageChart').getContext('2d');
     if (window.myChart) window.myChart.destroy();
@@ -173,17 +258,58 @@ function updateChart(currentDays) {
             indexAxis: 'y',
             responsive: true,
             plugins: { legend: { display: false } },
-            scales: { x: { display: false }, y: { grid: { display: false } } }
+            scales: { x: { display: false, min: 0 }, y: { grid: { display: false } } }
         }
     });
 }
 
-// Helpers
+function updateRiskTable() {
+    const tbody = document.getElementById('risk-table-body');
+    const summary = document.getElementById('risk-summary');
+    tbody.innerHTML = '';
+    
+    const delayed = allOrders.filter(o => isDelayed(o.data_entrada_etapa) && o.etapa_atual_index < 8);
+    
+    if (delayed.length === 0) {
+        summary.innerText = "Cadeia de suprimentos estável. Nenhum gargalo crítico detectado.";
+        summary.style.background = "#e8f5e9";
+        summary.style.color = "#2e7d32";
+    } else {
+        summary.innerText = `${delayed.length} pedido(s) retido(s) por mais de 2 dias na mesma etapa.`;
+        summary.style.background = "#fff9f0";
+        summary.style.color = "#856404";
+        
+        delayed.slice(0, 5).forEach(o => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${o.numero_pedido}</td>
+                <td>${getEtapaName(o.etapa_atual_index)}</td>
+                <td>Polímero PVC</td>
+                <td><span style="color: #dc3545;">Alto</span></td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+}
+
+function updateLogisticsSummary() {
+    const ready = allOrders.filter(o => o.etapa_atual_index === 7);
+    document.getElementById('ready-count').innerText = ready.length;
+    const list = document.getElementById('ready-orders-list');
+    list.innerHTML = '';
+    ready.forEach(o => {
+        const div = document.createElement('div');
+        div.className = 'pedido-mini-card';
+        div.innerHTML = `<div><div class="id">${o.numero_pedido}</div><div class="client">${o.cliente}</div></div> <i data-lucide="arrow-right"></i>`;
+        list.appendChild(div);
+    });
+}
+
 function calculateDays(dateStr) {
     const start = new Date(dateStr);
     const now = new Date();
-    const diff = now - start;
-    return Math.floor(diff / (1000 * 60 * 60 * 24));
+    const diff = Math.max(0, now - start);
+    return parseFloat((diff / (1000 * 60 * 60 * 24)).toFixed(1));
 }
 
 function isDelayed(dateStr) {
@@ -195,64 +321,44 @@ function getEtapaName(idx) {
     return names[idx] || 'Desconhecida';
 }
 
-// CRUD & Search
-document.getElementById('search-order').addEventListener('input', async (e) => {
-    const term = e.target.value.toLowerCase();
-    if (term.length < 3) return;
-
-    if (supabaseClient) {
-        const { data, error } = await supabaseClient
-            .from('pedidos')
-            .select('*')
-            .or(`numero_pedido.ilike.%${term}%,cliente.ilike.%${term}%,lote.ilike.%${term}%`)
-            .single();
-        if (data) loadOrder(data);
-    } else {
-        const found = mockOrders.find(o => o.numero_pedido.toLowerCase().includes(term) || o.cliente.toLowerCase().includes(term));
-        if (found) loadOrder(found);
-    }
-});
-
-// Modal Logic
-const adminModal = document.getElementById('admin-modal');
-document.getElementById('btn-open-admin').onclick = () => adminModal.style.display = 'flex';
-document.getElementById('close-admin').onclick = () => adminModal.style.display = 'none';
-
-document.getElementById('order-form').onsubmit = async (e) => {
-    e.preventDefault();
-    const orderObj = {
-        numero_pedido: document.getElementById('in-numero').value,
-        lote: document.getElementById('in-lote').value,
-        cliente: document.getElementById('in-cliente').value,
-        valor: parseFloat(document.getElementById('in-valor').value),
-        prazo: document.getElementById('in-prazo').value,
-        etapa_atual_index: parseInt(document.getElementById('in-etapa').value),
-        transportadora: document.getElementById('in-transp').value,
-        codigo_rastreio: document.getElementById('in-rastreio').value,
-        data_entrada_etapa: new Date().toISOString()
-    };
-
-    if (supabaseClient) {
-        const { error } = await supabaseClient.from('pedidos').upsert(orderObj);
-        if (!error) alert('Pedido salvo na InovaMold!');
-    } else {
-        mockOrders.push(orderObj);
-        alert('Modo Demo: Pedido salvo temporariamente.');
-    }
-    adminModal.style.display = 'none';
-    loadOrder(orderObj);
-};
-
-// Init
-// Init logic
-function startApp() {
-    console.log("InovaMold App Starting...");
-    initSupabase();
-    loadOrder(mockOrders[0]);
+function showToast(msg, type) {
+    Toastify({
+        text: msg,
+        duration: 3000,
+        gravity: "top",
+        position: "right",
+        style: { background: type === 'success' ? "#2e7d32" : type === 'error' ? "#dc3545" : "#1a1a1a" }
+    }).showToast();
 }
 
+// Modal Toggle
+const adminModal = document.getElementById('admin-modal');
+document.getElementById('btn-open-admin').onclick = () => {
+    adminModal.style.display = 'flex';
+    switchTab('list');
+    refreshData();
+};
+document.getElementById('close-admin').onclick = closeModal;
+function closeModal() { adminModal.style.display = 'none'; }
+
+// Mock Data Fallback
+const mockOrders = [
+    {
+        numero_pedido: 'IM-2026-001',
+        lote: 'POL-PVC-442',
+        cliente: 'Indústria Plástica Sul',
+        valor: 125400.00,
+        prazo: '2026-05-20',
+        etapa_atual_index: 3,
+        data_entrada_etapa: new Date(Date.now() - 3 * 86400000).toISOString(),
+        transportadora: null,
+        codigo_rastreio: null
+    }
+];
+
+// Start
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', startApp);
+    document.addEventListener('DOMContentLoaded', initSupabase);
 } else {
-    startApp();
+    initSupabase();
 }

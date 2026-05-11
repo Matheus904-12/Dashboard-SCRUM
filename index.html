@@ -5,9 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>InovaMold - Polimeros | Dashboard Logística</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
 </head>
 <body>
     <div class="container">
@@ -195,60 +197,92 @@
     <div id="admin-modal" class="modal-overlay" style="display: none;">
         <div class="glass-card modal-content" style="max-width: 600px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                <h3 class="section-title" style="margin-bottom: 0;">Gestão de Pedidos (CRUD)</h3>
-                <button id="close-admin" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
+                <h3 class="section-title" style="margin-bottom: 0;">Gestão de Pedidos (InovaMold ERP)</h3>
+                <button id="close-admin" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #000;">&times;</button>
             </div>
-            <form id="order-form">
-                <input type="hidden" id="order-id">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                    <div class="input-group">
-                        <label>Nº Pedido</label>
-                        <input type="text" id="in-numero" required>
-                    </div>
-                    <div class="input-group">
-                        <label>Lote</label>
-                        <input type="text" id="in-lote" required>
-                    </div>
+
+            <!-- Tab Navigation -->
+            <div style="display: flex; gap: 1rem; border-bottom: 1px solid var(--border-color); margin-bottom: 1.5rem;">
+                <button class="tab-btn active" id="tab-list">Lista de Pedidos</button>
+                <button class="tab-btn" id="tab-form">Novo / Editar</button>
+            </div>
+
+            <!-- List View -->
+            <div id="view-list">
+                <div style="max-height: 400px; overflow-y: auto;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr>
+                                <th>Pedido</th>
+                                <th>Cliente</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-table-body">
+                            <!-- Rows via JS -->
+                        </tbody>
+                    </table>
                 </div>
-                <div class="input-group">
-                    <label>Cliente</label>
-                    <input type="text" id="in-cliente" required>
-                </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                    <div class="input-group">
-                        <label>Valor (R$)</label>
-                        <input type="number" id="in-valor" step="0.01" required>
+            </div>
+
+            <!-- Form View -->
+            <div id="view-form" style="display: none;">
+                <form id="order-form">
+                    <input type="hidden" id="order-id">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div class="input-group">
+                            <label>Nº Pedido</label>
+                            <input type="text" id="in-numero" placeholder="Ex: IM-2026-001" required>
+                        </div>
+                        <div class="input-group">
+                            <label>Lote</label>
+                            <input type="text" id="in-lote" placeholder="Ex: POL-PVC-442" required>
+                        </div>
                     </div>
                     <div class="input-group">
-                        <label>Prazo</label>
-                        <input type="date" id="in-prazo" required>
+                        <label>Cliente</label>
+                        <input type="text" id="in-cliente" required>
                     </div>
-                </div>
-                <div class="input-group">
-                    <label>Etapa Atual</label>
-                    <select id="in-etapa">
-                        <option value="1">Comercial</option>
-                        <option value="2">PCP</option>
-                        <option value="3">Início Produção</option>
-                        <option value="4">Fim Produção</option>
-                        <option value="5">Estoque</option>
-                        <option value="6">Separação</option>
-                        <option value="7">Faturado</option>
-                        <option value="8">Enviado</option>
-                    </select>
-                </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                    <div class="input-group">
-                        <label>Transportadora</label>
-                        <input type="text" id="in-transp">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div class="input-group">
+                            <label>Valor (R$)</label>
+                            <input type="number" id="in-valor" step="0.01" required>
+                        </div>
+                        <div class="input-group">
+                            <label>Prazo</label>
+                            <input type="date" id="in-prazo" required>
+                        </div>
                     </div>
                     <div class="input-group">
-                        <label>Rastreio</label>
-                        <input type="text" id="in-rastreio">
+                        <label>Etapa Atual</label>
+                        <select id="in-etapa">
+                            <option value="1">Comercial</option>
+                            <option value="2">PCP</option>
+                            <option value="3">Início Produção</option>
+                            <option value="4">Fim Produção</option>
+                            <option value="5">Estoque</option>
+                            <option value="6">Separação</option>
+                            <option value="7">Faturado</option>
+                            <option value="8">Enviado</option>
+                        </select>
                     </div>
-                </div>
-                <button type="submit" style="margin-top: 1rem; width: 100%; background: #000;">Salvar Pedido na InovaMold</button>
-            </form>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div class="input-group">
+                            <label>Transportadora</label>
+                            <input type="text" id="in-transp">
+                        </div>
+                        <div class="input-group">
+                            <label>Rastreio</label>
+                            <input type="text" id="in-rastreio">
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                        <button type="submit" style="flex: 2; background: #000;">Salvar Pedido</button>
+                        <button type="button" id="btn-delete" style="flex: 1; background: #dc3545; display: none;">Excluir</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 
