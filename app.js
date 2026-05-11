@@ -114,7 +114,36 @@ async function loadOrder(orderData) {
     }
 
     updateChart(daysInStage);
+    loadInsumos(orderData.id);
     if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+async function loadInsumos(pedidoId) {
+    const list = document.querySelector('.semaforo-list');
+    list.innerHTML = '<li>Carregando insumos...</li>';
+    
+    if (supabaseClient && pedidoId) {
+        const { data, error } = await supabaseClient.from('insumos').select('*').eq('pedido_id', pedidoId);
+        if (data && data.length > 0) {
+            list.innerHTML = '';
+            data.forEach(item => {
+                const li = document.createElement('li');
+                li.className = 'semaforo-item';
+                li.innerHTML = `
+                    <div class="semaforo-left">
+                        <div class="dot ${item.status}"></div>
+                        <div class="item-name">${item.nome_insumo}</div>
+                    </div>
+                    <div class="item-details">${item.detalhes || ''}</div>
+                `;
+                list.appendChild(li);
+            });
+        } else {
+            list.innerHTML = '<li>Nenhum insumo crítico vinculado.</li>';
+        }
+    } else {
+        list.innerHTML = '<li>Modo Demo: Sem insumos vinculados.</li>';
+    }
 }
 
 // Admin Logic (CRUD)
@@ -189,10 +218,20 @@ document.getElementById('order-form').onsubmit = async (e) => {
     };
 
     if (supabaseClient) {
-        const { error } = await supabaseClient.from('pedidos').upsert(orderObj, { onConflict: 'numero_pedido' });
+        const { data, error } = await supabaseClient.from('pedidos').upsert(orderObj, { onConflict: 'numero_pedido' }).select();
         if (!error) {
             showToast("Pedido salvo com sucesso!", "success");
-            refreshData();
+            await refreshData();
+            const newOrder = data[0];
+            if (newOrder) {
+                // Add sample insumos for new orders so dashboard isn't empty
+                await supabaseClient.from('insumos').insert([
+                    { pedido_id: newOrder.id, nome_insumo: 'Matéria Prima (Polímero)', status: 'green' },
+                    { pedido_id: newOrder.id, nome_insumo: 'Pigmentação', status: 'green' },
+                    { pedido_id: newOrder.id, nome_insumo: 'Embalagem', status: 'yellow', detalhes: 'Aguardando lote' }
+                ]);
+                loadOrder(newOrder);
+            }
             closeModal();
         } else {
             showToast("Erro ao salvar no banco.", "error");
