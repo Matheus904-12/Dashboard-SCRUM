@@ -183,21 +183,43 @@ async function cycleStatus(idx) {
 
 // Admin Logic (CRUD)
 function renderAdminTable() {
-    const tbody = document.getElementById('admin-table-body');
-    tbody.innerHTML = '';
-    
+    const container = document.getElementById('admin-table-body');
+    if (!container) return;
+    container.innerHTML = '';
+
+    if (allOrders.length === 0) {
+        container.innerHTML = '<div style="text-align:center; padding:32px 0; color:#aaa; font-size:0.9rem;">Nenhum pedido encontrado</div>';
+        return;
+    }
+
     allOrders.forEach(o => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td><b>${o.numero_pedido}</b></td>
-            <td>${o.cliente}</td>
-            <td><span style="font-size: 0.7rem;">${getEtapaName(o.etapa_atual_index)}</span></td>
-            <td>
-                <button class="action-btn edit-btn" onclick="openEditMode('${o.numero_pedido}')">Editar</button>
-                <button class="action-btn delete-btn" onclick="deleteOrder('${o.numero_pedido}')">Excluir</button>
-            </td>
-        `;
-        tbody.appendChild(tr);
+        const etapaName = getEtapaName(o.etapa_atual_index);
+        const card = document.createElement('div');
+        card.style.cssText = 'display:flex; align-items:center; gap:12px; padding:14px 16px; background:#f8f9fa; border:1px solid #e9ecef; border-radius:12px; cursor:pointer; transition:all 0.18s;';
+        card.onmouseover = () => { card.style.background = '#f1f5f9'; card.style.borderColor = '#000'; };
+        card.onmouseout = () => { card.style.background = '#f8f9fa'; card.style.borderColor = '#e9ecef'; };
+        card.onclick = (e) => {
+            if (e.target.closest('.icon-action')) return; // don't trigger on icon clicks
+            loadOrder(o);
+            closeModal();
+        };
+        card.innerHTML = `
+            <div style="width:40px; height:40px; background:#000; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            </div>
+            <div style="flex:1; min-width:0;">
+                <div style="font-weight:700; font-size:0.9rem;">${o.numero_pedido}</div>
+                <div style="font-size:0.78rem; color:#64748b; margin-top:2px;">${o.cliente} · ${etapaName}</div>
+            </div>
+            <div style="display:flex; gap:6px; flex-shrink:0;">
+                <button class="icon-action" title="Editar" onclick="openEditMode('${o.numero_pedido}')" style="width:34px;height:34px;background:#fff;border:1px solid #e2e8f0;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#475569;transition:all 0.15s;" onmouseover="this.style.borderColor='#000';this.style.color='#000'" onmouseout="this.style.borderColor='#e2e8f0';this.style.color='#475569'">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </button>
+                <button class="icon-action" title="Excluir" onclick="deleteOrder('${o.numero_pedido}')" style="width:34px;height:34px;background:#fff;border:1px solid #e2e8f0;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#e11d48;transition:all 0.15s;" onmouseover="this.style.background='#fff1f2';this.style.borderColor='#fecdd3'" onmouseout="this.style.background='#fff';this.style.borderColor='#e2e8f0'">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+                </button>
+            </div>`;
+        container.appendChild(card);
     });
 }
 

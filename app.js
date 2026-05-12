@@ -135,15 +135,14 @@ function selectOrder(o) {
   currentOrder = o;
 
   // Re-render sidebar to highlight selection
-  renderSidebar(allOrders.filter(o => {
-    const term = document.getElementById('search-input').value;
-    return !term || term.length < 2 ||
-      (o.numero_pedido || '').toLowerCase().includes(term.toLowerCase()) ||
-      (o.cliente || '').toLowerCase().includes(term.toLowerCase()) ||
-      (o.lote || '').toLowerCase().includes(term.toLowerCase());
+  const searchTerm = document.getElementById('search-input').value;
+  renderSidebar(allOrders.filter(ord => {
+    return !searchTerm || searchTerm.length < 2 ||
+      (ord.numero_pedido || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (ord.cliente || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (ord.lote || '').toLowerCase().includes(searchTerm.toLowerCase());
   }));
 
-  const o = order;
   const activeStep = parseInt(o.etapa_atual_index) || 1;
   const dias = daysIn(o.data_entrada_etapa);
   const isDelayed = o.prazo && new Date(o.prazo) < new Date();
