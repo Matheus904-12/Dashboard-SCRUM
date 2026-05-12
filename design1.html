@@ -11,7 +11,10 @@
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
 </head>
-<body>
+<body style="opacity:0; animation:pageIn 0.4s ease forwards;">
+<style>
+@keyframes pageIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+</style>
     <div class="container">
         <!-- Brand Header -->
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem;">
@@ -21,7 +24,10 @@
                 </div>
                 <h2 style="letter-spacing: -1px; font-weight: 800;">InovaMold <span style="font-weight: 300; color: var(--text-secondary);">Polimeros</span></h2>
             </div>
-            <button onclick="window.location.href='index.html'" style="background:#000;color:#fff;border:none;padding:7px 14px;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;letter-spacing:0.5px;margin-right:8px;">⬡ Design 2</button><div id="connection-status" class="status-badge status-pending">
+            <button onclick="switchDesign('index.html')" style="background:#000;color:#fff;border:none;padding:7px 14px;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;letter-spacing:0.5px;margin-right:8px;display:flex;align-items:center;gap:6px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/></svg>
+                Design 2
+            </button><div id="connection-status" class="status-badge status-pending">
                 <i data-lucide="database" style="width: 14px; height: 14px;"></i>
                 Aguardando Configuração
             </div>
@@ -190,6 +196,28 @@
                      </tbody>
                  </table>
             </section>
+        </div>
+    </div>
+
+    <!-- Custom Confirm Dialog (Design 1) -->
+    <div id="confirm-dialog-d1" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:9999; align-items:center; justify-content:center; backdrop-filter:blur(6px);">
+        <div style="background:#fff; border:1px solid #e2e8f0; border-radius:16px; padding:28px 32px; width:360px; box-shadow:0 20px 60px rgba(0,0,0,0.15); animation:fadeInUp 0.2s ease;">
+            <div style="display:flex; align-items:flex-start; gap:14px; margin-bottom:22px;">
+                <div style="width:44px; height:44px; background:#fff1f2; border:1px solid #fecdd3; border-radius:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#e11d48" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                </div>
+                <div>
+                    <div id="confirm-title-d1" style="font-size:15px; font-weight:700; color:#0f172a; margin-bottom:6px;">Confirmar ação</div>
+                    <div id="confirm-msg-d1" style="font-size:13px; color:#64748b; line-height:1.55;"></div>
+                </div>
+            </div>
+            <div style="display:flex; gap:10px; justify-content:flex-end;">
+                <button id="confirm-cancel-d1" style="padding:10px 20px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; color:#475569; font-size:13px; font-weight:500; cursor:pointer; font-family:inherit; transition:all 0.15s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='#f8fafc'">Cancelar</button>
+                <button id="confirm-ok-d1" style="padding:10px 20px; background:#e11d48; border:none; border-radius:10px; color:#fff; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; transition:all 0.15s; display:flex; align-items:center; gap:7px;" onmouseover="this.style.background='#be123c'" onmouseout="this.style.background='#e11d48'">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+                    Excluir
+                </button>
+            </div>
         </div>
     </div>
 

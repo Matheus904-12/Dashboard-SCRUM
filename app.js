@@ -2,6 +2,40 @@
 const SUPABASE_URL = 'https://aueswagvyexetfxduuxh.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_83pMDh35idUGKvI289pyhg_M7V-JPpm';
 
+// ── CUSTOM CONFIRM DIALOG ────────────────────────────────────
+function customConfirm(message, title = 'Confirmar ação') {
+  return new Promise(resolve => {
+    const dialog = document.getElementById('confirm-dialog');
+    const msgEl  = document.getElementById('confirm-msg');
+    const titleEl = document.getElementById('confirm-title');
+    const okBtn  = document.getElementById('confirm-ok');
+    const cancelBtn = document.getElementById('confirm-cancel');
+    if (!dialog) { resolve(window.confirm(message)); return; }
+
+    titleEl.textContent = title;
+    msgEl.textContent = message;
+    dialog.style.display = 'flex';
+
+    const cleanup = (result) => {
+      dialog.style.display = 'none';
+      okBtn.removeEventListener('click', onOk);
+      cancelBtn.removeEventListener('click', onCancel);
+      resolve(result);
+    };
+    const onOk = () => cleanup(true);
+    const onCancel = () => cleanup(false);
+    okBtn.addEventListener('click', onOk);
+    cancelBtn.addEventListener('click', onCancel);
+  });
+}
+
+// ── DESIGN SWITCH WITH FADE TRANSITION ────────────────────────
+function switchDesign(url) {
+  document.body.style.transition = 'opacity 0.4s ease';
+  document.body.style.opacity = '0';
+  setTimeout(() => { window.location.href = url; }, 400);
+}
+
 // ── THEME SWITCHER ──────────────────────────────────
 function toggleTheme() {
   const html = document.documentElement;
@@ -511,7 +545,11 @@ async function saveOrder(e) {
 }
 
 async function deleteById(numeroPedido) {
-  if (!confirm(`Excluir o pedido ${numeroPedido}?`)) return;
+  const ok = await customConfirm(
+    `Deseja excluir permanentemente o pedido ${numeroPedido}? Esta ação não pode ser desfeita.`,
+    'Excluir Pedido'
+  );
+  if (!ok) return;
   try {
     const { error } = await db.from('pedidos').delete().eq('numero_pedido', numeroPedido);
     if (error) throw error;

@@ -2,6 +2,40 @@
 const SUPABASE_URL = 'https://aueswagvyexetfxduuxh.supabase.co'; 
 const SUPABASE_ANON_KEY = 'sb_publishable_83pMDh35idUGKvI289pyhg_M7V-JPpm';
 
+// ── CUSTOM CONFIRM DIALOG ────────────────────────────────────
+function customConfirm(message, title = 'Confirmar ação') {
+    return new Promise(resolve => {
+        const dialog = document.getElementById('confirm-dialog-d1');
+        const msgEl  = document.getElementById('confirm-msg-d1');
+        const titleEl = document.getElementById('confirm-title-d1');
+        const okBtn  = document.getElementById('confirm-ok-d1');
+        const cancelBtn = document.getElementById('confirm-cancel-d1');
+        if (!dialog) { resolve(window.confirm(message)); return; }
+
+        titleEl.textContent = title;
+        msgEl.textContent = message;
+        dialog.style.display = 'flex';
+
+        const cleanup = (result) => {
+            dialog.style.display = 'none';
+            okBtn.removeEventListener('click', onOk);
+            cancelBtn.removeEventListener('click', onCancel);
+            resolve(result);
+        };
+        const onOk = () => cleanup(true);
+        const onCancel = () => cleanup(false);
+        okBtn.addEventListener('click', onOk);
+        cancelBtn.addEventListener('click', onCancel);
+    });
+}
+
+// ── DESIGN SWITCH WITH FADE TRANSITION ────────────────────────
+function switchDesign(url) {
+    document.body.style.transition = 'opacity 0.4s ease';
+    document.body.style.opacity = '0';
+    setTimeout(() => { window.location.href = url; }, 400);
+}
+
 let supabaseClient = null;
 let currentOrder = null;
 let allOrders = [];
@@ -242,8 +276,11 @@ window.openEditMode = (numeroPedido) => {
 };
 
 async function deleteOrder(numeroPedido) {
-    if (!confirm(`Tem certeza que deseja excluir o pedido ${numeroPedido}?`)) return;
-
+    const ok = await customConfirm(
+        `Deseja excluir permanentemente o pedido ${numeroPedido}? Esta ação não pode ser desfeita.`,
+        'Excluir Pedido'
+    );
+    if (!ok) return;
     if (supabaseClient) {
         const { error } = await supabaseClient.from('pedidos').delete().eq('numero_pedido', numeroPedido);
         if (!error) {
