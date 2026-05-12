@@ -362,13 +362,16 @@ function updateRiskTable() {
 
 function updateLogisticsSummary() {
     const ready = allOrders.filter(o => o.etapa_atual_index === 7);
-    document.getElementById('ready-count').innerText = ready.length;
     const list = document.getElementById('ready-orders-list');
+    const countEl = document.getElementById('ready-count');
     list.innerHTML = '';
 
     // If no orders at etapa 7, show last 3 recent orders as reference
     const displayList = ready.length > 0 ? ready : allOrders.slice(0, 3);
-    const isAll = ready.length === 0;
+    const isReady = ready.length > 0;
+
+    // Counter: show what's actually displayed
+    if (countEl) countEl.innerText = displayList.length;
 
     displayList.forEach(o => {
         const div = document.createElement('div');
@@ -380,7 +383,7 @@ function updateLogisticsSummary() {
                 <div class="id">${o.numero_pedido}</div>
                 <div class="client">${o.cliente} · ${getEtapaName(o.etapa_atual_index)}</div>
             </div>
-            <span style="font-size:0.7rem;padding:2px 8px;border-radius:99px;background:${isAll?'#f1f5f9':'#e8f5e9'};color:${isAll?'#64748b':'#2e7d32'};font-weight:600;">${isAll?'ATIVO':'PRONTO'}</span>`;
+            <span style="font-size:0.7rem;padding:2px 8px;border-radius:99px;background:${isReady?'#e8f5e9':'#f1f5f9'};color:${isReady?'#2e7d32':'#64748b'};font-weight:600;">${isReady?'PRONTO':'ATIVO'}</span>`;
         list.appendChild(div);
     });
 

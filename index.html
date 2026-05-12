@@ -308,71 +308,10 @@
             </table>
           </div>
         </div>
-
-        <!-- ── BOTTOM GRID: always visible ─────────────────────── -->
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:20px;" id="bottom-grid">
-
-          <!-- Semáforo -->
-          <div class="card" style="padding:20px;">
-            <div style="font-size:10px; letter-spacing:2px; color:var(--text-muted); margin-bottom:14px;">SEMÁFORO DE POLÍMEROS & INSUMOS</div>
-            <div id="insumos-list-d2">
-              <div style="color:var(--text-muted); font-size:12px; padding:12px 0;">Selecione um pedido...</div>
-            </div>
-            <div id="insumos-alert-d2" style="display:none; margin-top:12px; padding:10px 14px; background:#1a0a0a; border:1px solid #2a0f0f; border-radius:6px; font-size:12px; color:#ef4444;">
-              ✖ Insumos críticos — risco de parada na produção
-            </div>
-          </div>
-
-          <!-- Eficiência por Etapa -->
-          <div class="card" style="padding:20px;">
-            <div style="font-size:10px; letter-spacing:2px; color:var(--text-muted); margin-bottom:14px;">EFICIÊNCIA POR ETAPA</div>
-            <div style="padding:10px 14px; background:var(--bg-base); border-radius:6px; margin-bottom:12px; font-size:12px;">
-              Etapa: <b id="d2-etapa-label" style="color:var(--accent);">—</b> &nbsp;·&nbsp;
-              Permanência: <span id="d2-etapa-time" style="color:var(--text-dim);">0 dias</span>
-            </div>
-            <canvas id="d2-stageChart" height="80"></canvas>
-            <div id="d2-chart-alert" style="display:none; margin-top:10px; padding:10px 14px; background:#1a1000; border:1px solid #2a1a00; border-radius:6px; font-size:12px; color:#f59e0b;">
-              ⚠ Gargalo: <span id="d2-delay-days">0</span> dia(s) acima da média
-            </div>
-          </div>
-
-          <!-- Logística e Expedição -->
-          <div class="card" style="padding:20px;">
-            <div style="font-size:10px; letter-spacing:2px; color:var(--text-muted); margin-bottom:14px;">LOGÍSTICA & EXPEDIÇÃO</div>
-            <div id="d2-tracking-info" style="display:none; padding:12px 16px; background:var(--bg-base); border-radius:8px; border:1px solid var(--border); margin-bottom:12px;">
-              <div style="font-size:11px; color:var(--text-muted); margin-bottom:4px;">TRANSPORTADORA</div>
-              <div id="d2-tracking-company" style="font-weight:600; color:var(--text); font-family:'IBM Plex Sans',sans-serif;">—</div>
-              <div style="font-size:11px; color:var(--text-muted); margin-top:8px; margin-bottom:4px;">CÓDIGO DE RASTREIO</div>
-              <div id="d2-tracking-code" style="color:var(--accent); font-size:13px;">—</div>
-            </div>
-            <div style="font-size:11px; font-weight:600; color:var(--text-muted); margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
-              AGUARDANDO EXPEDIÇÃO <span id="d2-ready-count" class="badge badge-warn">0</span>
-            </div>
-            <div id="d2-ready-orders-list"></div>
-          </div>
-
-          <!-- Pedidos em Risco -->
-          <div class="card" style="padding:20px;">
-            <div style="font-size:10px; letter-spacing:2px; color:var(--text-muted); margin-bottom:14px;">PEDIDOS EM RISCO (INSUMOS COMPARTILHADOS)</div>
-            <div id="d2-risk-summary" style="padding:10px 14px; background:var(--accent-bg); border:1px solid var(--accent-bdr); border-radius:6px; font-size:12px; color:var(--accent); margin-bottom:12px;">
-              Analisando cadeia de suprimentos...
-            </div>
-            <table style="width:100%; border-collapse:collapse; font-size:11px;">
-              <thead>
-                <tr style="border-bottom:1px solid var(--border);">
-                  <th style="padding:8px; text-align:left; color:var(--text-muted); font-weight:500;">PEDIDO</th>
-                  <th style="padding:8px; text-align:left; color:var(--text-muted); font-weight:500;">ETAPA</th>
-                  <th style="padding:8px; text-align:left; color:var(--text-muted); font-weight:500;">IMPACTO</th>
-                </tr>
-              </thead>
-              <tbody id="d2-risk-table-body"></tbody>
-            </table>
-          </div>
-
-        </div>
       </div>
     </div>
   </div>
+
 
   <!-- FAB -->
   <button class="fab" onclick="openModal()" style="display:flex; align-items:center; justify-content:center; position:fixed; bottom:24px; right:24px; z-index:600;">
