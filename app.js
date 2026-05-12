@@ -51,11 +51,13 @@ function toggleTheme() {
 (function() {
   const saved = localStorage.getItem('inovamold-theme') || 'dark';
   document.documentElement.setAttribute('data-theme', saved);
-  // Labels update after DOM loads
+  // Labels update after DOM loads (elements may not exist in all layouts)
   document.addEventListener('DOMContentLoaded', () => {
     const theme = document.documentElement.getAttribute('data-theme');
-    document.getElementById('theme-icon').textContent = theme === 'dark' ? '☀' : '🌙';
-    document.getElementById('theme-label').textContent = theme === 'dark' ? 'DESIGN 1' : 'DESIGN 2';
+    const iconEl  = document.getElementById('theme-icon');
+    const labelEl = document.getElementById('theme-label');
+    if (iconEl)  iconEl.textContent  = theme === 'dark' ? '☀' : '🌙';
+    if (labelEl) labelEl.textContent = theme === 'dark' ? 'DESIGN 1' : 'DESIGN 2';
   });
 })();
 
