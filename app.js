@@ -51,13 +51,23 @@ function toggleTheme() {
 (function() {
   const saved = localStorage.getItem('inovamold-theme') || 'dark';
   document.documentElement.setAttribute('data-theme', saved);
-  // Labels update after DOM loads (elements may not exist in all layouts)
   document.addEventListener('DOMContentLoaded', () => {
     const theme = document.documentElement.getAttribute('data-theme');
     const iconEl  = document.getElementById('theme-icon');
     const labelEl = document.getElementById('theme-label');
     if (iconEl)  iconEl.textContent  = theme === 'dark' ? '☀' : '🌙';
     if (labelEl) labelEl.textContent = theme === 'dark' ? 'DESIGN 1' : 'DESIGN 2';
+
+    // Safe JS fade-in (no CSS opacity:0 on body)
+    document.body.style.opacity = '0';
+    document.body.style.transform = 'translateY(6px)';
+    document.body.style.transition = 'opacity 0.35s ease, transform 0.35s ease';
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        document.body.style.opacity = '1';
+        document.body.style.transform = 'translateY(0)';
+      });
+    });
   });
 })();
 

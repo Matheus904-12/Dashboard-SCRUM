@@ -134,8 +134,7 @@
   </style>
 </head>
 
-<body style="opacity:0; animation:d2pageIn 0.4s ease forwards;">
-<style>@keyframes d2pageIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:translateY(0); } }</style>
+<body>
   <!-- APP SHELL: fixed inset-0 bypasses zoom/vh calculation issues -->
   <div id="app-shell" style="position:fixed; top:0; left:0; right:0; bottom:0; display:flex; flex-direction:column; overflow:hidden;">
 
@@ -336,6 +335,7 @@
     </div>
   </div>
   <!-- FAB -->  <button class="fab" onclick="openModal()" style="display:flex; align-items:center; justify-content:center; position:fixed; bottom:24px; right:24px; z-index:600;">
+
     <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
   </button>
 

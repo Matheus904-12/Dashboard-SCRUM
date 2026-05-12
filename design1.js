@@ -504,7 +504,15 @@ const mockOrders = [
 
 // Start
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initSupabase);
+    document.addEventListener('DOMContentLoaded', () => {
+        initSupabase();
+        // Safe JS fade-in
+        document.body.style.opacity = '0';
+        document.body.style.transition = 'opacity 0.35s ease';
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+            document.body.style.opacity = '1';
+        }));
+    });
 } else {
     initSupabase();
 }
