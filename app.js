@@ -29,11 +29,8 @@ function customConfirm(message, title = 'Confirmar ação') {
   });
 }
 
-// ── DESIGN SWITCH WITH FADE TRANSITION ────────────────────────
 function switchDesign(url) {
-  document.body.style.transition = 'opacity 0.4s ease';
-  document.body.style.opacity = '0';
-  setTimeout(() => { window.location.href = url; }, 400);
+  window.location.href = url;
 }
 
 // ── THEME SWITCHER ──────────────────────────────────
@@ -57,17 +54,6 @@ function toggleTheme() {
     const labelEl = document.getElementById('theme-label');
     if (iconEl)  iconEl.textContent  = theme === 'dark' ? '☀' : '🌙';
     if (labelEl) labelEl.textContent = theme === 'dark' ? 'DESIGN 1' : 'DESIGN 2';
-
-    // Safe JS fade-in (no CSS opacity:0 on body)
-    document.body.style.opacity = '0';
-    document.body.style.transform = 'translateY(6px)';
-    document.body.style.transition = 'opacity 0.35s ease, transform 0.35s ease';
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        document.body.style.opacity = '1';
-        document.body.style.transform = 'translateY(0)';
-      });
-    });
   });
 })();
 

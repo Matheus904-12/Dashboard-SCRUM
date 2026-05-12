@@ -29,11 +29,9 @@ function customConfirm(message, title = 'Confirmar ação') {
     });
 }
 
-// ── DESIGN SWITCH WITH FADE TRANSITION ────────────────────────
+// ── DESIGN SWITCH ──────────────────────────────────────────────
 function switchDesign(url) {
-    document.body.style.transition = 'opacity 0.4s ease';
-    document.body.style.opacity = '0';
-    setTimeout(() => { window.location.href = url; }, 400);
+    window.location.href = url;
 }
 
 let supabaseClient = null;
@@ -504,15 +502,7 @@ const mockOrders = [
 
 // Start
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-        initSupabase();
-        // Safe JS fade-in
-        document.body.style.opacity = '0';
-        document.body.style.transition = 'opacity 0.35s ease';
-        requestAnimationFrame(() => requestAnimationFrame(() => {
-            document.body.style.opacity = '1';
-        }));
-    });
+    document.addEventListener('DOMContentLoaded', initSupabase);
 } else {
     initSupabase();
 }
