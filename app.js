@@ -263,40 +263,26 @@ async function loadInsumos(pedidoId) {
       { nome_insumo: 'Pigmento Preto', status: 'green', detalhes: 'Estoque OK' },
     ];
 
+    // Cache for cycleInsumoStatus
+    window._d2Insumos = items;
+
     const hasCritical = items.some(i => i.status === 'red');
     document.getElementById('insumos-alert').style.display = hasCritical ? 'block' : 'none';
 
-    const rowHtml = items.map(ins => {
-      const badgeClass = ins.status === 'green' ? 'badge-ok' : ins.status === 'yellow' ? 'badge-warn' : 'badge-err';
-      const label = { green: 'OK', yellow: 'ATENÇÃO', red: 'CRÍTICO' }[ins.status] || ins.status;
-      const dot = `<div style="width:10px;height:10px;border-radius:50%;background:${STATUS_DOT[ins.status]||'#888'};flex-shrink:0;"></div>`;
-      return `<div class="insumo-row">${dot}
-        <div style="flex:1;"><div style="font-size:13px;color:var(--text);font-family:'IBM Plex Sans',sans-serif;">${ins.nome_insumo}</div>
-        ${ins.detalhes ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${ins.detalhes}</div>` : ''}</div>
-        <span class="badge ${badgeClass}">${label}</span></div>`;
+    // Render main tab list — clickable rows with status cycling
+    listEl.innerHTML = items.map((ins, idx) => {
+      const col = { green: '#4ade80', yellow: '#f59e0b', red: '#ef4444' }[ins.status] || '#888';
+      const lbl = { green: 'OK', yellow: 'ATENÇÃO', red: 'CRÍTICO' }[ins.status] || ins.status;
+      return `<div class="insumo-row" onclick="cycleInsumoStatus(${idx})" title="Clique para alterar status" style="cursor:pointer; border-radius:6px; padding:10px 8px; margin-bottom:2px; transition:background 0.15s;" onmouseover="this.style.background='var(--row-hover)'" onmouseout="this.style.background='transparent'">
+        <div style="width:10px;height:10px;border-radius:50%;background:${col};flex-shrink:0;transition:transform 0.15s;" onmouseover="this.style.transform='scale(1.5)'" onmouseout="this.style.transform='scale(1)'"></div>
+        <div style="flex:1;">
+          <div style="font-size:13px;color:var(--text);font-family:'IBM Plex Sans',sans-serif;">${ins.nome_insumo}</div>
+          ${ins.detalhes ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${ins.detalhes}</div>` : ''}
+        </div>
+        <span style="font-size:10px;padding:3px 10px;border-radius:99px;background:${col}22;color:${col};border:1px solid ${col}44;font-weight:600;letter-spacing:0.5px;">${lbl}</span>
+      </div>`;
     }).join('');
 
-    listEl.innerHTML = rowHtml;
-
-    // Also update bottom grid semáforo (clickable status cycling)
-    const d2list = document.getElementById('insumos-list-d2');
-    const d2alert = document.getElementById('insumos-alert-d2');
-    if (d2list) {
-      window._d2Insumos = items; // cache for cycling
-      d2list.innerHTML = items.map((ins, idx) => {
-        const col = { green: '#4ade80', yellow: '#f59e0b', red: '#ef4444' }[ins.status] || '#888';
-        const lbl = { green: 'OK', yellow: 'ATENÇÃO', red: 'CRÍTICO' }[ins.status] || ins.status;
-        return `<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);cursor:pointer;" onclick="cycleInsumoStatus(${idx})" title="Clique para alterar status">
-          <div style="width:10px;height:10px;border-radius:50%;background:${col};flex-shrink:0;transition:transform 0.15s;" onmouseover="this.style.transform='scale(1.5)'" onmouseout="this.style.transform='scale(1)'"></div>
-          <div style="flex:1;">
-            <div style="font-size:12px;color:var(--text);font-family:'IBM Plex Sans',sans-serif;">${ins.nome_insumo}</div>
-            <div style="font-size:10px;color:var(--text-muted);">${ins.detalhes || ''}</div>
-          </div>
-          <span style="font-size:10px;padding:2px 8px;border-radius:99px;background:${col}22;color:${col};border:1px solid ${col}44;font-weight:600;">${lbl}</span>
-        </div>`;
-      }).join('');
-    }
-    if (d2alert) d2alert.style.display = hasCritical ? 'block' : 'none';
   } catch {
     listEl.innerHTML = '<div style="padding:24px; color:#444; font-size:12px; text-align:center;">Erro ao carregar insumos</div>';
   }
@@ -306,19 +292,20 @@ async function cycleInsumoStatus(idx) {
   const items = window._d2Insumos;
   if (!items || !items[idx]) return;
   const cycle = { green: 'yellow', yellow: 'red', red: 'green' };
-  const label = { green: 'OK', yellow: 'ATENÇÃO', red: 'CRÍTICO' };
+  const labelMap = { green: 'OK', yellow: 'ATENÇÃO', red: 'CRÍTICO' };
   const item = items[idx];
   const next = cycle[item.status] || 'green';
   items[idx] = { ...item, status: next };
   window._d2Insumos = items;
-  // Re-call loadInsumos render path
-  const currentOrder = window._currentSelectedOrder;
+
+  // Re-render the tab immediately from cached items (no DB refetch needed)
   if (currentOrder) loadInsumos(currentOrder.id);
+
   // Persist to DB if real item
-  if (item.id) {
+  if (item.id && db) {
     await db.from('insumos').update({ status: next }).eq('id', item.id);
   }
-  showToast(`${item.nome_insumo}: ${label[next]}`, 'ok');
+  showToast(`${item.nome_insumo}: ${labelMap[next]}`, next === 'red' ? false : true);
 }
 
 // ── BOTTOM GRID FUNCTIONS ────────────────────────────────────
